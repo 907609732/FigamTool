@@ -1,0 +1,545 @@
+import {
+  defaultConfig,
+  type AiSettings,
+  type NodeKind,
+  type PluginConfig,
+  type PluginToUiMessage,
+  type PropertyPreset,
+  type RenameOptions,
+  type RenamePreviewItem,
+  type SelectionSummary,
+  type UeLayoutOptions,
+  type UiToPluginMessage
+} from "./shared";
+
+const CONFIG_KEY = "ai-auto-namer-config";
+const PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
+
+figma.showUI(__html__, { width: 460, height: 680, themeColors: true });
+
+void initialize();
+
+figma.on("selectionchange", async () => {
+  try {
+    post({ type: "SELECTION", selection: await getSelectionSummary() });
+  } catch (error) {
+    post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+figma.ui.onmessage = async (message: UiToPluginMessage) => {
+  try {
+    if (message.type === "SCAN_SELECTION") {
+      post({ type: "SELECTION", selection: await getSelectionSummary() });
+      return;
+    }
+
+    if (message.type === "SAVE_CONFIG") {
+      await saveConfig(message.config);
+      figma.notify("配置已保存");
+      return;
+    }
+
+    if (message.type === "IMPORT_CONFIG") {
+      const config = normalizeConfig(JSON.parse(message.json));
+      await saveConfig(config);
+      post({ type: "READY", config, selection: await getSelectionSummary() });
+      figma.notify("配置已导入");
+      return;
+    }
+
+    if (message.type === "EXPORT_CONFIG") {
+      post({ type: "CONFIG_EXPORTED", json: JSON.stringify(await loadConfig(), null, 2) });
+      return;
+    }
+
+    if (message.type === "WRITE_PROJECT_CONFIG") {
+      await writeProjectConfig(message.config);
+      post({ type: "PROJECT_CONFIG_WRITTEN", message: "项目配置节点已写入当前页面" });
+      return;
+    }
+
+    if (message.type === "PREVIEW_RENAME" || message.type === "GENERATE_AI_NAMES") {
+      const items = await buildRenamePreview(message.options, message.config, message.type === "GENERATE_AI_NAMES");
+      post({ type: "RENAME_PREVIEW", items, aiUsed: message.type === "GENERATE_AI_NAMES" });
+      return;
+    }
+
+    if (message.type === "APPLY_RENAME") {
+      const changed = await applyRename(message.items);
+      post({ type: "APPLY_RESULT", message: `已重命名 ${changed} 个节点` });
+      figma.notify(`已重命名 ${changed} 个节点`);
+      return;
+    }
+
+    if (message.type === "APPLY_PROPERTIES") {
+      const changed = await applyProperties(message.preset, message.options);
+      post({ type: "APPLY_RESULT", message: `已处理 ${changed} 个节点属性` });
+      figma.notify(`已处理 ${changed} 个节点属性`);
+      return;
+    }
+
+    if (message.type === "CREATE_UE_FRAME") {
+      const created = await createUeFrame(message.options, message.config);
+      post({ type: "UE_RESULT", message: `已生成 ${created.name}，包含 ${created.count} 个节点` });
+      figma.notify(`已生成 ${created.name}`);
+    }
+  } catch (error) {
+    post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+  }
+};
+
+async function initialize() {
+  const config = await loadConfig();
+  post({ type: "READY", config, selection: await getSelectionSummary() });
+}
+
+function post(message: PluginToUiMessage) {
+  figma.ui.postMessage(message);
+}
+
+async function loadConfig(): Promise<PluginConfig> {
+  const saved = await figma.clientStorage.getAsync(CONFIG_KEY);
+  return normalizeConfig(saved);
+}
+
+async function saveConfig(config: PluginConfig) {
+  await figma.clientStorage.setAsync(CONFIG_KEY, normalizeConfig(config));
+}
+
+function normalizeConfig(input: unknown): PluginConfig {
+  if (!input || typeof input !== "object") return defaultConfig;
+  const partial = input as Partial<PluginConfig>;
+  const ueDefaults = partial.ueDefaults ?? {};
+  const aiSettings = partial.aiSettings ?? {};
+  return {
+    namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
+    lexicon: Array.isArray(partial.lexicon) ? partial.lexicon : defaultConfig.lexicon,
+    propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
+    ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
+    aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings)
+  };
+}
+
+async function ensureCurrentPageLoaded() {
+  await figma.currentPage.loadAsync();
+}
+
+async function getSelectionSummary(): Promise<SelectionSummary> {
+  await ensureCurrentPageLoaded();
+  const roots = figma.currentPage.selection.map((node) => ({
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    childCount: "children" in node ? node.children.length : 0
+  }));
+  return { count: roots.length, roots };
+}
+
+async function collectTargets(options: RenameOptions): Promise<SceneNode[]> {
+  await ensureCurrentPageLoaded();
+  const selection = Array.from(figma.currentPage.selection);
+  if (options.scope === "selection") return selection.filter(allowNode(options));
+  if (options.scope === "children") {
+    const children: SceneNode[] = [];
+    for (const node of selection) {
+      if ("children" in node) {
+        for (const child of node.children) children.push(child);
+      }
+    }
+    return children.filter(allowNode(options));
+  }
+  const deep: SceneNode[] = [];
+  for (const node of selection) {
+    for (const child of flatten(node)) deep.push(child);
+  }
+  return deep.filter(allowNode(options));
+}
+
+function flatten(node: SceneNode): SceneNode[] {
+  if (!("children" in node)) return [node];
+  const nodes: SceneNode[] = [node];
+  for (const child of node.children) {
+    for (const nested of flatten(child)) nodes.push(nested);
+  }
+  return nodes;
+}
+
+function allowNode(options: Pick<RenameOptions, "skipHidden" | "skipLocked">) {
+  return (node: SceneNode) => {
+    if (options.skipHidden && "visible" in node && !node.visible) return false;
+    if (options.skipLocked && node.locked) return false;
+    return true;
+  };
+}
+
+async function buildRenamePreview(
+  options: RenameOptions,
+  config: PluginConfig,
+  useAi: boolean
+): Promise<RenamePreviewItem[]> {
+  const targets = await collectTargets(options);
+  if (!targets.length) throw new Error("没有可处理的选中节点");
+
+  const ruleByKind = new Map(config.namingRules.map((rule) => [rule.kind, rule]));
+  const counters = new Map<NodeKind, number>();
+  const previews: RenamePreviewItem[] = targets.map((node) => {
+    const kind = getNodeKind(node);
+    const rule = ruleByKind.get(kind) ?? ruleByKind.get("NODE") ?? defaultConfig.namingRules[5];
+    const nextIndex = (counters.get(kind) ?? 0) + 1;
+    counters.set(kind, nextIndex);
+    const prefix = getLexiconPrefix(kind, rule.prefix, config, options.lexiconEntryId);
+    const base = `${prefix}_${String(nextIndex).padStart(rule.digits, "0")}`;
+    const nextName = options.keepOriginalSuffix ? `${base}_${safeName(node.name)}` : base;
+    return { id: node.id, currentName: node.name, nextName, type: node.type, kind };
+  });
+
+  if (!useAi) return previews;
+  const aiNames = await requestAiNames(targets, config.aiSettings, previews);
+  return previews.map((item) => ({ ...item, nextName: aiNames.get(item.id) ?? item.nextName }));
+}
+
+function getLexiconPrefix(kind: NodeKind, fallbackPrefix: string, config: PluginConfig, lexiconEntryId?: string): string {
+  const lexicon = Array.isArray(config.lexicon) ? config.lexicon : defaultConfig.lexicon;
+  if (lexiconEntryId === "__auto_lexicon__") {
+    return lexicon.find((entry) => entry.kind === kind)?.prefix ?? fallbackPrefix;
+  }
+  if (lexiconEntryId) {
+    return lexicon.find((entry) => entry.id === lexiconEntryId)?.prefix ?? fallbackPrefix;
+  }
+  return fallbackPrefix;
+}
+
+async function applyRename(items: RenamePreviewItem[]): Promise<number> {
+  let changed = 0;
+  for (const item of items) {
+    const node = await figma.getNodeByIdAsync(item.id);
+    if (node && "name" in node && item.nextName.trim()) {
+      node.name = item.nextName.trim();
+      changed += 1;
+    }
+  }
+  return changed;
+}
+
+async function applyProperties(preset: PropertyPreset, options: RenameOptions): Promise<number> {
+  const targets = (await collectTargets(options)).filter((node) => preset.targetKinds.includes(getNodeKind(node)));
+  let changed = 0;
+  for (const node of targets) {
+    const didChange = await applyPresetToNode(node, preset);
+    if (didChange) changed += 1;
+  }
+  return changed;
+}
+
+async function applyPresetToNode(node: SceneNode, preset: PropertyPreset): Promise<boolean> {
+  const { enabled, values } = preset;
+  let changed = false;
+
+  if (enabled.opacity && "opacity" in node) {
+    node.opacity = clamp(values.opacity, 0, 1);
+    changed = true;
+  }
+  if (enabled.visible && "visible" in node) {
+    node.visible = values.visible;
+    changed = true;
+  }
+  if (enabled.locked) {
+    node.locked = values.locked;
+    changed = true;
+  }
+  if (enabled.blendMode && "blendMode" in node) {
+    node.blendMode = values.blendMode;
+    changed = true;
+  }
+  if (enabled.constraints && "constraints" in node) {
+    node.constraints = { horizontal: values.constraintsHorizontal, vertical: values.constraintsVertical };
+    changed = true;
+  }
+  if (
+    enabled.cornerRadius &&
+    "topLeftCornerRadius" in node &&
+    "topRightCornerRadius" in node &&
+    "bottomLeftCornerRadius" in node &&
+    "bottomRightCornerRadius" in node
+  ) {
+    node.topLeftCornerRadius = values.cornerRadius;
+    node.topRightCornerRadius = values.cornerRadius;
+    node.bottomLeftCornerRadius = values.cornerRadius;
+    node.bottomRightCornerRadius = values.cornerRadius;
+    changed = true;
+  }
+  if (enabled.clipsContent && "clipsContent" in node) {
+    node.clipsContent = values.clipsContent;
+    changed = true;
+  }
+  if (enabled.layoutMode && "layoutMode" in node) {
+    node.layoutMode = values.layoutMode;
+    changed = true;
+  }
+  if (enabled.padding && "paddingLeft" in node) {
+    node.paddingLeft = values.padding;
+    node.paddingRight = values.padding;
+    node.paddingTop = values.padding;
+    node.paddingBottom = values.padding;
+    changed = true;
+  }
+  if (enabled.itemSpacing && "itemSpacing" in node) {
+    node.itemSpacing = values.itemSpacing;
+    changed = true;
+  }
+
+  if (node.type === "TEXT") {
+    changed = (await applyTextPreset(node, preset)) || changed;
+  }
+
+  if ((enabled.imageScaleMode || enabled.textFill) && "fills" in node && Array.isArray(node.fills)) {
+    const fills = node.fills.map((paint) => {
+      if (enabled.imageScaleMode && paint.type === "IMAGE") return { ...paint, scaleMode: values.imageScaleMode };
+      if (enabled.textFill && paint.type === "SOLID") return { ...paint, color: hexToRgb(values.textFill) };
+      return paint;
+    });
+    node.fills = fills;
+    changed = true;
+  }
+
+  return changed;
+}
+
+async function applyTextPreset(node: TextNode, preset: PropertyPreset): Promise<boolean> {
+  const { enabled, values } = preset;
+  let changed = false;
+
+  if (enabled.fontFamily || enabled.fontStyle) {
+    const fontName: FontName = {
+      family: values.fontFamily || "Inter",
+      style: values.fontStyle || "Regular"
+    };
+    try {
+      await figma.loadFontAsync(fontName);
+      node.fontName = fontName;
+      changed = true;
+    } catch {
+      figma.notify(`字体不可用，已跳过：${fontName.family} ${fontName.style}`);
+    }
+  } else if (node.fontName !== figma.mixed) {
+    await figma.loadFontAsync(node.fontName);
+  }
+
+  if (enabled.fontSize) {
+    node.fontSize = values.fontSize;
+    changed = true;
+  }
+  if (enabled.lineHeightPx) {
+    node.lineHeight = { unit: "PIXELS", value: values.lineHeightPx };
+    changed = true;
+  }
+  if (enabled.letterSpacing) {
+    node.letterSpacing = { unit: "PIXELS", value: values.letterSpacing };
+    changed = true;
+  }
+  if (enabled.textAlignHorizontal) {
+    node.textAlignHorizontal = values.textAlignHorizontal;
+    changed = true;
+  }
+  if (enabled.textAlignVertical) {
+    node.textAlignVertical = values.textAlignVertical;
+    changed = true;
+  }
+  if (enabled.paragraphSpacing) {
+    node.paragraphSpacing = values.paragraphSpacing;
+    changed = true;
+  }
+  if (enabled.textFill) {
+    node.fills = [{ type: "SOLID", color: hexToRgb(values.textFill) }];
+    changed = true;
+  }
+
+  return changed;
+}
+
+async function createUeFrame(options: UeLayoutOptions, config: PluginConfig): Promise<{ name: string; count: number }> {
+  await ensureCurrentPageLoaded();
+  const source = figma.currentPage.selection[0];
+  if (!source || !("absoluteBoundingBox" in source) || !source.absoluteBoundingBox) {
+    throw new Error("请选择一个 UI 画板或包含图片的节点");
+  }
+
+  const sourceBox = source.absoluteBoundingBox;
+  const candidates = flatten(source).filter((node) => {
+    if (!options.includeHidden && "visible" in node && !node.visible) return false;
+    if (!options.includeLocked && node.locked) return false;
+    return node !== source && (getNodeKind(node) === "IMAGE" || node.exportSettings.length > 0);
+  });
+  if (!candidates.length) throw new Error("选区内没有图片或可导出节点");
+
+  const frame = figma.createFrame();
+  frame.name = `${source.name}_UE_Assets`;
+  frame.x = sourceBox.x + sourceBox.width + 120;
+  frame.y = sourceBox.y;
+  frame.resize(sourceBox.width, sourceBox.height);
+  frame.fills = [];
+  figma.currentPage.appendChild(frame);
+
+  const imageRule = config.namingRules.find((rule) => rule.kind === "IMAGE") ?? defaultConfig.namingRules[1];
+  candidates.forEach((node, index) => {
+    const clone = node.clone();
+    clone.name = `${imageRule.prefix}_${String(index + 1).padStart(imageRule.digits, "0")}`;
+    frame.appendChild(clone);
+    if (options.mode === "preserve") {
+      const box = node.absoluteBoundingBox;
+      if (box) {
+        clone.x = box.x - sourceBox.x;
+        clone.y = box.y - sourceBox.y;
+      }
+    } else {
+      const size = options.preserveSize ? { width: clone.width, height: clone.height } : scaleSize(clone, options.maxGridItemSize);
+      if (!options.preserveSize && "resize" in clone) clone.resize(size.width, size.height);
+      const columns = Math.max(1, Math.floor(sourceBox.width / (options.maxGridItemSize + options.spacing)));
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      clone.x = col * (options.maxGridItemSize + options.spacing);
+      clone.y = row * (options.maxGridItemSize + options.spacing + 28);
+    }
+  });
+
+  if (options.mode === "grid") {
+    const rows = Math.ceil(candidates.length / Math.max(1, Math.floor(sourceBox.width / (options.maxGridItemSize + options.spacing))));
+    frame.resize(sourceBox.width, Math.max(sourceBox.height, rows * (options.maxGridItemSize + options.spacing + 28)));
+  }
+
+  figma.currentPage.selection = [frame];
+  figma.viewport.scrollAndZoomIntoView([frame]);
+  return { name: frame.name, count: candidates.length };
+}
+
+async function writeProjectConfig(config: PluginConfig) {
+  await ensureCurrentPageLoaded();
+  const existing = figma.currentPage.findOne((node) => node.name === PROJECT_CONFIG_NODE_NAME);
+  const target = existing ?? figma.createFrame();
+  target.name = PROJECT_CONFIG_NODE_NAME;
+  target.setPluginData(CONFIG_KEY, JSON.stringify(normalizeConfig(config)));
+  if ("visible" in target) target.visible = false;
+  target.locked = true;
+  if (!existing) {
+    target.x = figma.viewport.center.x;
+    target.y = figma.viewport.center.y;
+    figma.currentPage.appendChild(target);
+  }
+}
+
+async function requestAiNames(
+  nodes: SceneNode[],
+  settings: AiSettings,
+  fallback: RenamePreviewItem[]
+): Promise<Map<string, string>> {
+  if (!settings.enabled || !settings.apiKey || !settings.baseUrl || !settings.model) {
+    throw new Error("AI 未启用或缺少 Base URL / API Key / Model");
+  }
+  const summaries = nodes.map((node) => ({
+    id: node.id,
+    type: node.type,
+    name: node.name,
+    kind: getNodeKind(node),
+    size: "width" in node ? { width: Math.round(node.width), height: Math.round(node.height) } : undefined,
+    text: node.type === "TEXT" ? node.characters.slice(0, 120) : undefined,
+    path: getNodePath(node)
+  }));
+  const response = await fetch(settings.baseUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${settings.apiKey}`
+    },
+    body: JSON.stringify({
+      model: settings.model,
+      messages: [
+        { role: "system", content: settings.promptTemplate },
+        {
+          role: "user",
+          content: `Return only JSON array: [{"id":"node id","name":"PascalOrSnakeName"}]. Nodes: ${JSON.stringify(summaries)}. Fallback prefixes: ${JSON.stringify(fallback)}`
+        }
+      ],
+      temperature: 0.2
+    })
+  });
+  if (!response.ok) throw new Error(`AI 请求失败：${response.status} ${response.statusText}`);
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content !== "string") throw new Error("AI 返回格式无效");
+  const parsed = JSON.parse(extractJson(content)) as Array<{ id: string; name: string }>;
+  const seen = new Map<string, number>();
+  return new Map(
+    parsed
+      .filter((item) => item.id && item.name)
+      .map((item) => {
+        const base = safeName(item.name);
+        const next = (seen.get(base) ?? 0) + 1;
+        seen.set(base, next);
+        return [item.id, next > 1 ? `${base}_${String(next).padStart(3, "0")}` : base];
+      })
+  );
+}
+
+function getNodeKind(node: SceneNode): NodeKind {
+  if (node.type === "TEXT") return "TEXT";
+  if (hasImageFill(node)) return "IMAGE";
+  if (node.type === "INSTANCE" || node.type === "COMPONENT" || node.type === "COMPONENT_SET") return "COMPONENT";
+  if (node.type === "FRAME" || node.type === "SECTION") return "FRAME";
+  if (
+    node.type === "VECTOR" ||
+    node.type === "BOOLEAN_OPERATION" ||
+    node.type === "RECTANGLE" ||
+    node.type === "ELLIPSE" ||
+    node.type === "POLYGON" ||
+    node.type === "STAR" ||
+    node.type === "LINE"
+  ) {
+    return "SHAPE";
+  }
+  return "NODE";
+}
+
+function hasImageFill(node: SceneNode): boolean {
+  return "fills" in node && Array.isArray(node.fills) && node.fills.some((paint) => paint.type === "IMAGE");
+}
+
+function getNodePath(node: BaseNode): string {
+  const names: string[] = [];
+  let current: BaseNode | null = node;
+  while (current && current.type !== "PAGE" && current.type !== "DOCUMENT") {
+    names.unshift(current.name);
+    current = current.parent;
+  }
+  return names.join("/");
+}
+
+function safeName(value: string): string {
+  const cleaned = value.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  return cleaned || "Node";
+}
+
+function hexToRgb(hex: string): RGB {
+  const normalized = hex.replace("#", "").trim();
+  const value = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
+  const number = Number.parseInt(value || "ffffff", 16);
+  return {
+    r: ((number >> 16) & 255) / 255,
+    g: ((number >> 8) & 255) / 255,
+    b: (number & 255) / 255
+  };
+}
+
+function extractJson(content: string): string {
+  const match = content.match(/\[[\s\S]*\]/);
+  return match ? match[0] : content;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function scaleSize(node: SceneNode, maxSize: number) {
+  const ratio = Math.min(1, maxSize / Math.max(node.width, node.height));
+  return { width: Math.max(1, node.width * ratio), height: Math.max(1, node.height * ratio) };
+}

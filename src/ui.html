@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Auto Namer</title>
+    <style>
+      :root { color: var(--figma-color-text, #1f2328); background: var(--figma-color-bg, #fff); font: 12px Inter, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      main { display: flex; min-height: 100vh; flex-direction: column; }
+      header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      h1, h2, p { margin: 0; }
+      h1 { font-size: 16px; }
+      h2 { margin: 12px 0 8px; font-size: 12px; text-transform: uppercase; }
+      a { color: #0a66ff; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      section { display: none; flex: 1; overflow: auto; padding: 12px; }
+      section.active { display: block; }
+      button, input, select, textarea { width: 100%; min-height: 30px; border: 1px solid var(--figma-color-border, #d0d7de); border-radius: 6px; background: var(--figma-color-bg, #fff); color: inherit; font: inherit; }
+      button { cursor: pointer; padding: 0 10px; }
+      button.active { background: var(--figma-color-bg-hover, #f3f4f6); }
+      button.primary { border-color: #0a66ff; background: #0a66ff; color: white; }
+      button:disabled { opacity: .55; cursor: not-allowed; }
+      input, select, textarea { padding: 0 8px; }
+      textarea { min-height: 108px; padding: 8px; resize: vertical; }
+      label { display: grid; gap: 5px; }
+      fieldset, .panel, .empty { border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 10px; margin: 10px 0; }
+      legend { font-weight: 700; padding: 0 4px; }
+      .grid { display: grid; gap: 8px; }
+      .two { grid-template-columns: 1fr 1fr; }
+      .three { grid-template-columns: repeat(3, 1fr); }
+      .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+      .check { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+      .check input { width: 14px; min-height: 14px; }
+      .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
+      .selection-item span, footer, small { color: var(--figma-color-text-secondary, #666); }
+      .brand { min-width: 0; }
+      .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
+      .meta span, .meta a { white-space: nowrap; }
+      .row { display: grid; grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1.2fr); gap: 6px; align-items: center; margin-bottom: 6px; }
+      .row small, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rule { display: grid; grid-template-columns: 1fr 96px 64px; gap: 8px; align-items: end; margin-bottom: 8px; }
+      .lex { display: grid; grid-template-columns: 96px 1fr 82px 28px; gap: 6px; align-items: end; margin-bottom: 8px; }
+      footer { min-height: 34px; padding: 9px 12px; border-top: 1px solid var(--figma-color-border, #ddd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">
+          <h1>AI Auto Namer</h1>
+          <p id="selectionText">未选中节点</p>
+          <div class="meta">
+            <span id="versionText">V__APP_VERSION__</span>
+            <span>By五成</span>
+            <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
+          </div>
+        </div>
+        <button id="refreshBtn" title="刷新选区">Refresh</button>
+      </header>
+      <nav>
+        <button class="tab active" data-tab="naming">命名</button>
+        <button class="tab" data-tab="properties">属性</button>
+        <button class="tab" data-tab="ue">UE画板</button>
+        <button class="tab" data-tab="presets">词库/AI</button>
+      </nav>
+      <section id="naming" class="active">
+        <div id="selectionPanel" class="panel"></div>
+        <div class="grid">
+          <label>范围 Scope<select id="scope"><option value="deep">全部子节点</option><option value="children">直接子级</option><option value="selection">仅选中节点</option></select></label>
+          <label>本地词库推荐<select id="lexiconSelect"></select></label>
+          <label class="check"><input id="skipLocked" type="checkbox" checked>跳过 Locked</label>
+          <label class="check"><input id="skipHidden" type="checkbox" checked>跳过 Hidden</label>
+          <label class="check"><input id="keepOriginalSuffix" type="checkbox">保留原名后缀</label>
+        </div>
+        <div class="actions">
+          <button id="previewBtn">规则预览</button>
+          <button id="aiBtn">AI 建议</button>
+          <button id="applyRenameBtn" class="primary" disabled>应用命名</button>
+        </div>
+        <div id="preview" class="grid empty">还没有预览结果。</div>
+      </section>
+      <section id="properties">
+        <label>属性组合<select id="presetSelect"></select></label>
+        <fieldset>
+          <legend>Target</legend>
+          <div id="targetKinds" class="grid two"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Common / Text</legend>
+          <label class="check"><input class="propEnable" data-key="opacity" type="checkbox">opacity</label><input id="opacity" type="number" min="0" max="1" step=".1">
+          <label class="check"><input class="propEnable" data-key="fontSize" type="checkbox">fontSize</label><input id="fontSize" type="number">
+          <label class="check"><input class="propEnable" data-key="lineHeightPx" type="checkbox">lineHeight</label><input id="lineHeightPx" type="number">
+          <label class="check"><input class="propEnable" data-key="letterSpacing" type="checkbox">letterSpacing</label><input id="letterSpacing" type="number">
+          <label class="check"><input class="propEnable" data-key="textAlignHorizontal" type="checkbox">align center</label>
+        </fieldset>
+        <button id="applyPropsBtn" class="primary">应用属性</button>
+      </section>
+      <section id="ue">
+        <div id="ueSelectionPanel" class="panel"></div>
+        <div class="grid">
+          <label>生成模式<select id="ueMode"><option value="preserve">保持原坐标</option><option value="grid">网格整理</option></select></label>
+          <label>spacing<input id="ueSpacing" type="number"></label>
+          <label>maxGridItemSize<input id="ueMax" type="number"></label>
+          <label class="check"><input id="uePreserveSize" type="checkbox">保留原尺寸</label>
+          <label class="check"><input id="ueIncludeHidden" type="checkbox">包含 Hidden</label>
+          <label class="check"><input id="ueIncludeLocked" type="checkbox">包含 Locked</label>
+        </div>
+        <div class="actions"><button id="createUeBtn" class="primary">生成 UE 画板</button></div>
+      </section>
+      <section id="presets">
+        <h2>命名词库</h2><div id="rules"></div>
+        <h2>本地词条推荐</h2>
+        <div id="lexiconList"></div>
+        <button id="addLexiconBtn">新增词条</button>
+        <h2>AI 设置</h2>
+        <div class="grid">
+          <label class="check"><input id="aiEnabled" type="checkbox">启用 AI</label>
+          <div class="actions"><button id="openAiPresetBtn">OpenAI兼容</button><button id="kimiPresetBtn">Kimi API</button><button id="saveAiBtn">保存AI</button></div>
+          <label>Base URL<input id="aiBaseUrl"></label>
+          <label>Model<input id="aiModel"></label>
+          <label>API Key<input id="aiKey" type="password"></label>
+          <label>Prompt Template<textarea id="aiPrompt"></textarea></label>
+        </div>
+        <h2>配置共享</h2>
+        <div class="actions"><button id="exportBtn">导出 JSON</button><button id="importBtn">导入 JSON</button><button id="writeProjectBtn">写入项目配置</button></div>
+        <textarea id="jsonBox" placeholder="导入/导出的 JSON 配置"></textarea>
+      </section>
+      <footer id="status">准备就绪</footer>
+    </main>
+    <script>
+      var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
+      var config = null;
+      var selection = { count: 0, roots: [] };
+      var previewItems = [];
+      function defaultConfig() {
+        return {
+          namingRules: [
+            { id: "text", label: "Text 文字", kind: "TEXT", prefix: "Txt", digits: 3 },
+            { id: "image", label: "Image 图片", kind: "IMAGE", prefix: "Img", digits: 3 },
+            { id: "component", label: "Component 组件", kind: "COMPONENT", prefix: "Cmp", digits: 3 },
+            { id: "frame", label: "Frame 画板", kind: "FRAME", prefix: "Frm", digits: 3 },
+            { id: "shape", label: "Shape 图形", kind: "SHAPE", prefix: "Shape", digits: 3 },
+            { id: "node", label: "Node 其他", kind: "NODE", prefix: "Node", digits: 3 }
+          ],
+          lexicon: [
+            { id: "lex-text", label: "Text 文本", kind: "TEXT", prefix: "Txt", description: "所有文字层" },
+            { id: "lex-title", label: "Title 标题", kind: "TEXT", prefix: "Title", description: "标题文字" },
+            { id: "lex-label", label: "Label 标签", kind: "TEXT", prefix: "Label", description: "说明/标签文字" },
+            { id: "lex-image", label: "Image 图片", kind: "IMAGE", prefix: "Img", description: "图片资源" },
+            { id: "lex-icon", label: "Icon 图标", kind: "IMAGE", prefix: "Icon", description: "小图标/装饰图" },
+            { id: "lex-button", label: "Button 按钮", kind: "COMPONENT", prefix: "Btn", description: "按钮组件或按钮组" },
+            { id: "lex-panel", label: "Panel 面板", kind: "FRAME", prefix: "Panel", description: "弹窗/面板容器" },
+            { id: "lex-group", label: "Group 组", kind: "FRAME", prefix: "Group", description: "普通分组容器" },
+            { id: "lex-shape", label: "Shape 图形", kind: "SHAPE", prefix: "Shape", description: "基础形状" },
+            { id: "lex-bg", label: "Background 背景", kind: "SHAPE", prefix: "Bg", description: "背景块/底图" },
+            { id: "lex-node", label: "Node 通用", kind: "NODE", prefix: "Node", description: "无法识别的节点" }
+          ],
+          propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPx: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 } }],
+          ueDefaults: { mode: "preserve", spacing: 24, preserveSize: true, includeHidden: false, includeLocked: false, maxGridItemSize: 160 },
+          aiSettings: { enabled: false, provider: "openai-compatible", baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." }
+        };
+      }
+      function post(message) { parent.postMessage({ pluginMessage: message }, "*"); }
+      function status(text) { document.getElementById("status").textContent = text; }
+      function normalizeConfig() { if (!config.lexicon) config.lexicon = defaultConfig().lexicon; if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible"; }
+      function renameOptions() { return { scope: value("scope"), skipLocked: checked("skipLocked"), skipHidden: checked("skipHidden"), keepOriginalSuffix: checked("keepOriginalSuffix"), useAiNames: false, lexiconEntryId: value("lexiconSelect") }; }
+      function ueOptions() { return { mode: value("ueMode"), spacing: number("ueSpacing"), preserveSize: checked("uePreserveSize"), includeHidden: checked("ueIncludeHidden"), includeLocked: checked("ueIncludeLocked"), maxGridItemSize: number("ueMax") }; }
+      function checked(id) { return document.getElementById(id).checked; }
+      function value(id) { return document.getElementById(id).value; }
+      function number(id) { return Number(value(id)); }
+      function setChecked(id, next) { document.getElementById(id).checked = !!next; }
+      function setValue(id, next) { document.getElementById(id).value = next; }
+      function currentPreset() { return config.propertyPresets.find(function(p) { return p.id === value("presetSelect"); }) || config.propertyPresets[0]; }
+      function save() { post({ type: "SAVE_CONFIG", config: config }); }
+      function renderSelection() {
+        document.getElementById("selectionText").textContent = selection.count ? "已选中 " + selection.count + " 个节点" : "未选中节点";
+        var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择节点或画板后刷新。</p>";
+        document.getElementById("selectionPanel").innerHTML = html;
+        document.getElementById("ueSelectionPanel").innerHTML = html;
+      }
+      function renderRules() {
+        normalizeConfig();
+        document.getElementById("rules").innerHTML = config.namingRules.map(function(rule) {
+          return '<div class="rule"><span>' + esc(rule.label) + '</span><input data-rule-prefix="' + rule.id + '" value="' + esc(rule.prefix) + '"><input type="number" min="1" max="6" data-rule-digits="' + rule.id + '" value="' + rule.digits + '"></div>';
+        }).join("");
+        document.querySelectorAll("[data-rule-prefix]").forEach(function(input) { input.oninput = function() { updateRule(input.dataset.rulePrefix, "prefix", input.value); }; });
+        document.querySelectorAll("[data-rule-digits]").forEach(function(input) { input.oninput = function() { updateRule(input.dataset.ruleDigits, "digits", Number(input.value)); }; });
+        renderLexiconSelect();
+        renderLexiconList();
+      }
+      function renderLexiconSelect() {
+        var select = document.getElementById("lexiconSelect");
+        var options = ['<option value="">不用词库，仅按类型前缀</option>', '<option value="__auto_lexicon__">按节点类型自动推荐</option>'];
+        config.lexicon.forEach(function(entry) {
+          options.push('<option value="' + entry.id + '">' + esc(entry.label) + ' · ' + entry.kind + ' · ' + esc(entry.prefix) + '</option>');
+        });
+        select.innerHTML = options.join("");
+      }
+      function renderLexiconList() {
+        document.getElementById("lexiconList").innerHTML = config.lexicon.map(function(entry) {
+          return '<div class="lex"><select data-lex-kind="' + entry.id + '">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + ">" + kind + "</option>"; }).join("") + '</select><input data-lex-label="' + entry.id + '" value="' + esc(entry.label) + '"><input data-lex-prefix="' + entry.id + '" value="' + esc(entry.prefix) + '"><button data-lex-remove="' + entry.id + '">×</button></div>';
+        }).join("");
+        document.querySelectorAll("[data-lex-kind]").forEach(function(input) { input.onchange = function() { updateLexicon(input.dataset.lexKind, "kind", input.value); }; });
+        document.querySelectorAll("[data-lex-label]").forEach(function(input) { input.oninput = function() { updateLexicon(input.dataset.lexLabel, "label", input.value); }; });
+        document.querySelectorAll("[data-lex-prefix]").forEach(function(input) { input.oninput = function() { updateLexicon(input.dataset.lexPrefix, "prefix", input.value); }; });
+        document.querySelectorAll("[data-lex-remove]").forEach(function(btn) { btn.onclick = function() { config.lexicon = config.lexicon.filter(function(entry) { return entry.id !== btn.dataset.lexRemove; }); save(); renderRules(); }; });
+      }
+      function renderPreset() {
+        var select = document.getElementById("presetSelect");
+        select.innerHTML = config.propertyPresets.map(function(p) { return '<option value="' + p.id + '">' + esc(p.name) + '</option>'; }).join("");
+        var preset = currentPreset();
+        document.getElementById("targetKinds").innerHTML = nodeKinds.map(function(kind) {
+          return '<label class="check"><input data-target-kind="' + kind + '" type="checkbox" ' + (preset.targetKinds.indexOf(kind) >= 0 ? "checked" : "") + ">" + kind + "</label>";
+        }).join("");
+        ["opacity","fontSize","lineHeightPx","letterSpacing"].forEach(function(key) { setValue(key, preset.values[key]); });
+        document.querySelectorAll(".propEnable").forEach(function(input) { input.checked = !!preset.enabled[input.dataset.key]; });
+        document.querySelectorAll("[data-target-kind]").forEach(function(input) { input.onchange = function() { var kind = input.dataset.targetKind; preset.targetKinds = input.checked ? preset.targetKinds.concat([kind]) : preset.targetKinds.filter(function(k) { return k !== kind; }); save(); }; });
+      }
+      function renderAi() {
+        normalizeConfig();
+        setChecked("aiEnabled", config.aiSettings.enabled);
+        setValue("aiBaseUrl", config.aiSettings.baseUrl);
+        setValue("aiModel", config.aiSettings.model);
+        setValue("aiKey", config.aiSettings.apiKey);
+        setValue("aiPrompt", config.aiSettings.promptTemplate);
+        setValue("ueMode", config.ueDefaults.mode);
+        setValue("ueSpacing", config.ueDefaults.spacing);
+        setValue("ueMax", config.ueDefaults.maxGridItemSize);
+        setChecked("uePreserveSize", config.ueDefaults.preserveSize);
+        setChecked("ueIncludeHidden", config.ueDefaults.includeHidden);
+        setChecked("ueIncludeLocked", config.ueDefaults.includeLocked);
+      }
+      function renderPreview() {
+        var box = document.getElementById("preview");
+        if (!previewItems.length) { box.className = "grid empty"; box.textContent = "还没有预览结果。"; document.getElementById("applyRenameBtn").disabled = true; return; }
+        box.className = "grid";
+        box.innerHTML = previewItems.map(function(item, index) {
+          return '<div class="row"><span>' + item.kind + '</span><small title="' + esc(item.currentName) + '">' + esc(item.currentName) + '</small><input data-preview-index="' + index + '" value="' + esc(item.nextName) + '"></div>';
+        }).join("");
+        document.querySelectorAll("[data-preview-index]").forEach(function(input) { input.oninput = function() { previewItems[Number(input.dataset.previewIndex)].nextName = input.value; }; });
+        document.getElementById("applyRenameBtn").disabled = false;
+      }
+      function updateRule(id, key, next) { config.namingRules.forEach(function(rule) { if (rule.id === id) rule[key] = next; }); save(); }
+      function updateLexicon(id, key, next) { config.lexicon.forEach(function(entry) { if (entry.id === id) entry[key] = next; }); save(); renderLexiconSelect(); }
+      function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.apiKey = value("aiKey"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
+      function applyAiPreset(provider) {
+        config.aiSettings.provider = provider;
+        if (provider === "kimi") {
+          config.aiSettings.baseUrl = "https://api.moonshot.cn/v1/chat/completions";
+          config.aiSettings.model = "moonshot-v1-8k";
+          config.aiSettings.promptTemplate = "你是 Figma UI 节点命名助手。请基于节点类型、层级、尺寸和文字内容，为 UE 导入生成短英文命名。只返回 JSON 数组：[{\"id\":\"节点id\",\"name\":\"Name\"}]。";
+        } else {
+          config.aiSettings.baseUrl = "https://api.openai.com/v1/chat/completions";
+          config.aiSettings.model = "gpt-4.1-mini";
+        }
+        renderAi();
+        save();
+        status(provider === "kimi" ? "已切换到 Kimi API 配置" : "已切换到 OpenAI 兼容配置");
+      }
+      function syncPreset() {
+        var preset = currentPreset();
+        ["opacity","fontSize","lineHeightPx","letterSpacing"].forEach(function(key) { preset.values[key] = number(key); });
+        preset.values.textAlignHorizontal = "CENTER"; preset.values.textAlignVertical = "CENTER";
+        document.querySelectorAll(".propEnable").forEach(function(input) { preset.enabled[input.dataset.key] = input.checked; });
+        if (preset.enabled.textAlignHorizontal) preset.enabled.textAlignVertical = true;
+        save();
+        return preset;
+      }
+      function esc(text) { return String(text).replace(/[&<>"']/g, function(ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]; }); }
+      document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { document.querySelectorAll(".tab").forEach(function(b) { b.classList.remove("active"); }); document.querySelectorAll("section").forEach(function(s) { s.classList.remove("active"); }); btn.classList.add("active"); document.getElementById(btn.dataset.tab).classList.add("active"); }; });
+      document.getElementById("refreshBtn").onclick = function() { post({ type: "SCAN_SELECTION" }); };
+      document.getElementById("previewBtn").onclick = function() { post({ type: "PREVIEW_RENAME", options: renameOptions(), config: config }); };
+      document.getElementById("aiBtn").onclick = function() { post({ type: "GENERATE_AI_NAMES", options: renameOptions(), config: config }); };
+      document.getElementById("applyRenameBtn").onclick = function() { post({ type: "APPLY_RENAME", items: previewItems }); };
+      document.getElementById("applyPropsBtn").onclick = function() { post({ type: "APPLY_PROPERTIES", preset: syncPreset(), options: renameOptions() }); };
+      document.getElementById("createUeBtn").onclick = function() { config.ueDefaults = ueOptions(); save(); post({ type: "CREATE_UE_FRAME", options: config.ueDefaults, config: config }); };
+      document.getElementById("exportBtn").onclick = function() { post({ type: "EXPORT_CONFIG" }); };
+      document.getElementById("importBtn").onclick = function() { post({ type: "IMPORT_CONFIG", json: value("jsonBox") }); };
+      document.getElementById("writeProjectBtn").onclick = function() { post({ type: "WRITE_PROJECT_CONFIG", config: config }); };
+      document.getElementById("addLexiconBtn").onclick = function() { config.lexicon.push({ id: "lex-" + Date.now(), label: "New Term", kind: "NODE", prefix: "New", description: "" }); save(); renderRules(); };
+      document.getElementById("openAiPresetBtn").onclick = function() { applyAiPreset("openai-compatible"); };
+      document.getElementById("kimiPresetBtn").onclick = function() { applyAiPreset("kimi"); };
+      document.getElementById("saveAiBtn").onclick = syncAi;
+      ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
+      document.getElementById("presetSelect").onchange = renderPreset;
+      window.onmessage = function(event) {
+        var message = event.data.pluginMessage;
+        if (!message) return;
+        if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderSelection(); renderRules(); renderPreset(); renderAi(); }
+        if (message.type === "SELECTION") { selection = message.selection; renderSelection(); }
+        if (message.type === "RENAME_PREVIEW") { previewItems = message.items; renderPreview(); status((message.aiUsed ? "AI" : "规则") + "预览 " + message.items.length + " 个节点"); }
+        if (message.type === "APPLY_RESULT" || message.type === "UE_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);
+        if (message.type === "CONFIG_EXPORTED") { setValue("jsonBox", message.json); status("配置已导出到文本框"); }
+        if (message.type === "ERROR") status("错误：" + message.message);
+      };
+      config = defaultConfig();
+      renderSelection(); renderRules(); renderPreset(); renderAi();
+      post({ type: "SCAN_SELECTION" });
+    </script>
+  </body>
+</html>

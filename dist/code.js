@@ -1,0 +1,567 @@
+"use strict";
+(() => {
+  var __defProp = Object.defineProperty;
+  var __defProps = Object.defineProperties;
+  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __propIsEnum = Object.prototype.propertyIsEnumerable;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __spreadValues = (a, b) => {
+    for (var prop in b || (b = {}))
+      if (__hasOwnProp.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b)) {
+        if (__propIsEnum.call(b, prop))
+          __defNormalProp(a, prop, b[prop]);
+      }
+    return a;
+  };
+  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+
+  // src/shared.ts
+  var defaultConfig = {
+    namingRules: [
+      { id: "text", label: "Text \u6587\u5B57", kind: "TEXT", prefix: "Txt", digits: 3 },
+      { id: "image", label: "Image \u56FE\u7247", kind: "IMAGE", prefix: "Img", digits: 3 },
+      { id: "component", label: "Component \u7EC4\u4EF6", kind: "COMPONENT", prefix: "Cmp", digits: 3 },
+      { id: "frame", label: "Frame \u753B\u677F", kind: "FRAME", prefix: "Frm", digits: 3 },
+      { id: "shape", label: "Shape \u56FE\u5F62", kind: "SHAPE", prefix: "Shape", digits: 3 },
+      { id: "node", label: "Node \u5176\u4ED6", kind: "NODE", prefix: "Node", digits: 3 }
+    ],
+    lexicon: [
+      { id: "lex-text", label: "Text \u6587\u672C", kind: "TEXT", prefix: "Txt", description: "\u6240\u6709\u6587\u5B57\u5C42" },
+      { id: "lex-title", label: "Title \u6807\u9898", kind: "TEXT", prefix: "Title", description: "\u6807\u9898\u6587\u5B57" },
+      { id: "lex-label", label: "Label \u6807\u7B7E", kind: "TEXT", prefix: "Label", description: "\u8BF4\u660E/\u6807\u7B7E\u6587\u5B57" },
+      { id: "lex-image", label: "Image \u56FE\u7247", kind: "IMAGE", prefix: "Img", description: "\u56FE\u7247\u8D44\u6E90" },
+      { id: "lex-icon", label: "Icon \u56FE\u6807", kind: "IMAGE", prefix: "Icon", description: "\u5C0F\u56FE\u6807/\u88C5\u9970\u56FE" },
+      { id: "lex-button", label: "Button \u6309\u94AE", kind: "COMPONENT", prefix: "Btn", description: "\u6309\u94AE\u7EC4\u4EF6\u6216\u6309\u94AE\u7EC4" },
+      { id: "lex-panel", label: "Panel \u9762\u677F", kind: "FRAME", prefix: "Panel", description: "\u5F39\u7A97/\u9762\u677F\u5BB9\u5668" },
+      { id: "lex-group", label: "Group \u7EC4", kind: "FRAME", prefix: "Group", description: "\u666E\u901A\u5206\u7EC4\u5BB9\u5668" },
+      { id: "lex-shape", label: "Shape \u56FE\u5F62", kind: "SHAPE", prefix: "Shape", description: "\u57FA\u7840\u5F62\u72B6" },
+      { id: "lex-bg", label: "Background \u80CC\u666F", kind: "SHAPE", prefix: "Bg", description: "\u80CC\u666F\u5757/\u5E95\u56FE" },
+      { id: "lex-node", label: "Node \u901A\u7528", kind: "NODE", prefix: "Node", description: "\u65E0\u6CD5\u8BC6\u522B\u7684\u8282\u70B9" }
+    ],
+    propertyPresets: [
+      {
+        id: "ue-text-center",
+        name: "UE Text Center",
+        targetKinds: ["TEXT"],
+        enabled: {
+          opacity: true,
+          fontSize: true,
+          lineHeightPx: true,
+          letterSpacing: true,
+          textAlignHorizontal: true,
+          textAlignVertical: true
+        },
+        values: {
+          opacity: 1,
+          visible: true,
+          locked: false,
+          blendMode: "NORMAL",
+          fontFamily: "Inter",
+          fontStyle: "Regular",
+          fontSize: 24,
+          lineHeightPx: 28,
+          letterSpacing: 0,
+          textAlignHorizontal: "CENTER",
+          textAlignVertical: "CENTER",
+          paragraphSpacing: 0,
+          textFill: "#FFFFFF",
+          imageScaleMode: "FILL",
+          cornerRadius: 0,
+          constraintsHorizontal: "MIN",
+          constraintsVertical: "MIN",
+          clipsContent: false,
+          layoutMode: "NONE",
+          padding: 0,
+          itemSpacing: 0
+        }
+      }
+    ],
+    ueDefaults: {
+      mode: "preserve",
+      spacing: 24,
+      preserveSize: true,
+      includeHidden: false,
+      includeLocked: false,
+      maxGridItemSize: 160
+    },
+    aiSettings: {
+      enabled: false,
+      provider: "openai-compatible",
+      baseUrl: "https://api.openai.com/v1/chat/completions",
+      apiKey: "",
+      model: "gpt-4.1-mini",
+      promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name. Use short English asset names and preserve prefixes when useful."
+    }
+  };
+
+  // src/code.ts
+  var CONFIG_KEY = "ai-auto-namer-config";
+  var PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
+  figma.showUI(__html__, { width: 460, height: 680, themeColors: true });
+  void initialize();
+  figma.on("selectionchange", async () => {
+    try {
+      post({ type: "SELECTION", selection: await getSelectionSummary() });
+    } catch (error) {
+      post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  figma.ui.onmessage = async (message) => {
+    try {
+      if (message.type === "SCAN_SELECTION") {
+        post({ type: "SELECTION", selection: await getSelectionSummary() });
+        return;
+      }
+      if (message.type === "SAVE_CONFIG") {
+        await saveConfig(message.config);
+        figma.notify("\u914D\u7F6E\u5DF2\u4FDD\u5B58");
+        return;
+      }
+      if (message.type === "IMPORT_CONFIG") {
+        const config = normalizeConfig(JSON.parse(message.json));
+        await saveConfig(config);
+        post({ type: "READY", config, selection: await getSelectionSummary() });
+        figma.notify("\u914D\u7F6E\u5DF2\u5BFC\u5165");
+        return;
+      }
+      if (message.type === "EXPORT_CONFIG") {
+        post({ type: "CONFIG_EXPORTED", json: JSON.stringify(await loadConfig(), null, 2) });
+        return;
+      }
+      if (message.type === "WRITE_PROJECT_CONFIG") {
+        await writeProjectConfig(message.config);
+        post({ type: "PROJECT_CONFIG_WRITTEN", message: "\u9879\u76EE\u914D\u7F6E\u8282\u70B9\u5DF2\u5199\u5165\u5F53\u524D\u9875\u9762" });
+        return;
+      }
+      if (message.type === "PREVIEW_RENAME" || message.type === "GENERATE_AI_NAMES") {
+        const items = await buildRenamePreview(message.options, message.config, message.type === "GENERATE_AI_NAMES");
+        post({ type: "RENAME_PREVIEW", items, aiUsed: message.type === "GENERATE_AI_NAMES" });
+        return;
+      }
+      if (message.type === "APPLY_RENAME") {
+        const changed = await applyRename(message.items);
+        post({ type: "APPLY_RESULT", message: `\u5DF2\u91CD\u547D\u540D ${changed} \u4E2A\u8282\u70B9` });
+        figma.notify(`\u5DF2\u91CD\u547D\u540D ${changed} \u4E2A\u8282\u70B9`);
+        return;
+      }
+      if (message.type === "APPLY_PROPERTIES") {
+        const changed = await applyProperties(message.preset, message.options);
+        post({ type: "APPLY_RESULT", message: `\u5DF2\u5904\u7406 ${changed} \u4E2A\u8282\u70B9\u5C5E\u6027` });
+        figma.notify(`\u5DF2\u5904\u7406 ${changed} \u4E2A\u8282\u70B9\u5C5E\u6027`);
+        return;
+      }
+      if (message.type === "CREATE_UE_FRAME") {
+        const created = await createUeFrame(message.options, message.config);
+        post({ type: "UE_RESULT", message: `\u5DF2\u751F\u6210 ${created.name}\uFF0C\u5305\u542B ${created.count} \u4E2A\u8282\u70B9` });
+        figma.notify(`\u5DF2\u751F\u6210 ${created.name}`);
+      }
+    } catch (error) {
+      post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+  async function initialize() {
+    const config = await loadConfig();
+    post({ type: "READY", config, selection: await getSelectionSummary() });
+  }
+  function post(message) {
+    figma.ui.postMessage(message);
+  }
+  async function loadConfig() {
+    const saved = await figma.clientStorage.getAsync(CONFIG_KEY);
+    return normalizeConfig(saved);
+  }
+  async function saveConfig(config) {
+    await figma.clientStorage.setAsync(CONFIG_KEY, normalizeConfig(config));
+  }
+  function normalizeConfig(input) {
+    var _a, _b;
+    if (!input || typeof input !== "object") return defaultConfig;
+    const partial = input;
+    const ueDefaults = (_a = partial.ueDefaults) != null ? _a : {};
+    const aiSettings = (_b = partial.aiSettings) != null ? _b : {};
+    return {
+      namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
+      lexicon: Array.isArray(partial.lexicon) ? partial.lexicon : defaultConfig.lexicon,
+      propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
+      ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
+      aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings)
+    };
+  }
+  async function ensureCurrentPageLoaded() {
+    await figma.currentPage.loadAsync();
+  }
+  async function getSelectionSummary() {
+    await ensureCurrentPageLoaded();
+    const roots = figma.currentPage.selection.map((node) => ({
+      id: node.id,
+      name: node.name,
+      type: node.type,
+      childCount: "children" in node ? node.children.length : 0
+    }));
+    return { count: roots.length, roots };
+  }
+  async function collectTargets(options) {
+    await ensureCurrentPageLoaded();
+    const selection = Array.from(figma.currentPage.selection);
+    if (options.scope === "selection") return selection.filter(allowNode(options));
+    if (options.scope === "children") {
+      const children = [];
+      for (const node of selection) {
+        if ("children" in node) {
+          for (const child of node.children) children.push(child);
+        }
+      }
+      return children.filter(allowNode(options));
+    }
+    const deep = [];
+    for (const node of selection) {
+      for (const child of flatten(node)) deep.push(child);
+    }
+    return deep.filter(allowNode(options));
+  }
+  function flatten(node) {
+    if (!("children" in node)) return [node];
+    const nodes = [node];
+    for (const child of node.children) {
+      for (const nested of flatten(child)) nodes.push(nested);
+    }
+    return nodes;
+  }
+  function allowNode(options) {
+    return (node) => {
+      if (options.skipHidden && "visible" in node && !node.visible) return false;
+      if (options.skipLocked && node.locked) return false;
+      return true;
+    };
+  }
+  async function buildRenamePreview(options, config, useAi) {
+    const targets = await collectTargets(options);
+    if (!targets.length) throw new Error("\u6CA1\u6709\u53EF\u5904\u7406\u7684\u9009\u4E2D\u8282\u70B9");
+    const ruleByKind = new Map(config.namingRules.map((rule) => [rule.kind, rule]));
+    const counters = /* @__PURE__ */ new Map();
+    const previews = targets.map((node) => {
+      var _a, _b, _c;
+      const kind = getNodeKind(node);
+      const rule = (_b = (_a = ruleByKind.get(kind)) != null ? _a : ruleByKind.get("NODE")) != null ? _b : defaultConfig.namingRules[5];
+      const nextIndex = ((_c = counters.get(kind)) != null ? _c : 0) + 1;
+      counters.set(kind, nextIndex);
+      const prefix = getLexiconPrefix(kind, rule.prefix, config, options.lexiconEntryId);
+      const base = `${prefix}_${String(nextIndex).padStart(rule.digits, "0")}`;
+      const nextName = options.keepOriginalSuffix ? `${base}_${safeName(node.name)}` : base;
+      return { id: node.id, currentName: node.name, nextName, type: node.type, kind };
+    });
+    if (!useAi) return previews;
+    const aiNames = await requestAiNames(targets, config.aiSettings, previews);
+    return previews.map((item) => {
+      var _a;
+      return __spreadProps(__spreadValues({}, item), { nextName: (_a = aiNames.get(item.id)) != null ? _a : item.nextName });
+    });
+  }
+  function getLexiconPrefix(kind, fallbackPrefix, config, lexiconEntryId) {
+    var _a, _b, _c, _d;
+    const lexicon = Array.isArray(config.lexicon) ? config.lexicon : defaultConfig.lexicon;
+    if (lexiconEntryId === "__auto_lexicon__") {
+      return (_b = (_a = lexicon.find((entry) => entry.kind === kind)) == null ? void 0 : _a.prefix) != null ? _b : fallbackPrefix;
+    }
+    if (lexiconEntryId) {
+      return (_d = (_c = lexicon.find((entry) => entry.id === lexiconEntryId)) == null ? void 0 : _c.prefix) != null ? _d : fallbackPrefix;
+    }
+    return fallbackPrefix;
+  }
+  async function applyRename(items) {
+    let changed = 0;
+    for (const item of items) {
+      const node = await figma.getNodeByIdAsync(item.id);
+      if (node && "name" in node && item.nextName.trim()) {
+        node.name = item.nextName.trim();
+        changed += 1;
+      }
+    }
+    return changed;
+  }
+  async function applyProperties(preset, options) {
+    const targets = (await collectTargets(options)).filter((node) => preset.targetKinds.includes(getNodeKind(node)));
+    let changed = 0;
+    for (const node of targets) {
+      const didChange = await applyPresetToNode(node, preset);
+      if (didChange) changed += 1;
+    }
+    return changed;
+  }
+  async function applyPresetToNode(node, preset) {
+    const { enabled, values } = preset;
+    let changed = false;
+    if (enabled.opacity && "opacity" in node) {
+      node.opacity = clamp(values.opacity, 0, 1);
+      changed = true;
+    }
+    if (enabled.visible && "visible" in node) {
+      node.visible = values.visible;
+      changed = true;
+    }
+    if (enabled.locked) {
+      node.locked = values.locked;
+      changed = true;
+    }
+    if (enabled.blendMode && "blendMode" in node) {
+      node.blendMode = values.blendMode;
+      changed = true;
+    }
+    if (enabled.constraints && "constraints" in node) {
+      node.constraints = { horizontal: values.constraintsHorizontal, vertical: values.constraintsVertical };
+      changed = true;
+    }
+    if (enabled.cornerRadius && "topLeftCornerRadius" in node && "topRightCornerRadius" in node && "bottomLeftCornerRadius" in node && "bottomRightCornerRadius" in node) {
+      node.topLeftCornerRadius = values.cornerRadius;
+      node.topRightCornerRadius = values.cornerRadius;
+      node.bottomLeftCornerRadius = values.cornerRadius;
+      node.bottomRightCornerRadius = values.cornerRadius;
+      changed = true;
+    }
+    if (enabled.clipsContent && "clipsContent" in node) {
+      node.clipsContent = values.clipsContent;
+      changed = true;
+    }
+    if (enabled.layoutMode && "layoutMode" in node) {
+      node.layoutMode = values.layoutMode;
+      changed = true;
+    }
+    if (enabled.padding && "paddingLeft" in node) {
+      node.paddingLeft = values.padding;
+      node.paddingRight = values.padding;
+      node.paddingTop = values.padding;
+      node.paddingBottom = values.padding;
+      changed = true;
+    }
+    if (enabled.itemSpacing && "itemSpacing" in node) {
+      node.itemSpacing = values.itemSpacing;
+      changed = true;
+    }
+    if (node.type === "TEXT") {
+      changed = await applyTextPreset(node, preset) || changed;
+    }
+    if ((enabled.imageScaleMode || enabled.textFill) && "fills" in node && Array.isArray(node.fills)) {
+      const fills = node.fills.map((paint) => {
+        if (enabled.imageScaleMode && paint.type === "IMAGE") return __spreadProps(__spreadValues({}, paint), { scaleMode: values.imageScaleMode });
+        if (enabled.textFill && paint.type === "SOLID") return __spreadProps(__spreadValues({}, paint), { color: hexToRgb(values.textFill) });
+        return paint;
+      });
+      node.fills = fills;
+      changed = true;
+    }
+    return changed;
+  }
+  async function applyTextPreset(node, preset) {
+    const { enabled, values } = preset;
+    let changed = false;
+    if (enabled.fontFamily || enabled.fontStyle) {
+      const fontName = {
+        family: values.fontFamily || "Inter",
+        style: values.fontStyle || "Regular"
+      };
+      try {
+        await figma.loadFontAsync(fontName);
+        node.fontName = fontName;
+        changed = true;
+      } catch (e) {
+        figma.notify(`\u5B57\u4F53\u4E0D\u53EF\u7528\uFF0C\u5DF2\u8DF3\u8FC7\uFF1A${fontName.family} ${fontName.style}`);
+      }
+    } else if (node.fontName !== figma.mixed) {
+      await figma.loadFontAsync(node.fontName);
+    }
+    if (enabled.fontSize) {
+      node.fontSize = values.fontSize;
+      changed = true;
+    }
+    if (enabled.lineHeightPx) {
+      node.lineHeight = { unit: "PIXELS", value: values.lineHeightPx };
+      changed = true;
+    }
+    if (enabled.letterSpacing) {
+      node.letterSpacing = { unit: "PIXELS", value: values.letterSpacing };
+      changed = true;
+    }
+    if (enabled.textAlignHorizontal) {
+      node.textAlignHorizontal = values.textAlignHorizontal;
+      changed = true;
+    }
+    if (enabled.textAlignVertical) {
+      node.textAlignVertical = values.textAlignVertical;
+      changed = true;
+    }
+    if (enabled.paragraphSpacing) {
+      node.paragraphSpacing = values.paragraphSpacing;
+      changed = true;
+    }
+    if (enabled.textFill) {
+      node.fills = [{ type: "SOLID", color: hexToRgb(values.textFill) }];
+      changed = true;
+    }
+    return changed;
+  }
+  async function createUeFrame(options, config) {
+    var _a;
+    await ensureCurrentPageLoaded();
+    const source = figma.currentPage.selection[0];
+    if (!source || !("absoluteBoundingBox" in source) || !source.absoluteBoundingBox) {
+      throw new Error("\u8BF7\u9009\u62E9\u4E00\u4E2A UI \u753B\u677F\u6216\u5305\u542B\u56FE\u7247\u7684\u8282\u70B9");
+    }
+    const sourceBox = source.absoluteBoundingBox;
+    const candidates = flatten(source).filter((node) => {
+      if (!options.includeHidden && "visible" in node && !node.visible) return false;
+      if (!options.includeLocked && node.locked) return false;
+      return node !== source && (getNodeKind(node) === "IMAGE" || node.exportSettings.length > 0);
+    });
+    if (!candidates.length) throw new Error("\u9009\u533A\u5185\u6CA1\u6709\u56FE\u7247\u6216\u53EF\u5BFC\u51FA\u8282\u70B9");
+    const frame = figma.createFrame();
+    frame.name = `${source.name}_UE_Assets`;
+    frame.x = sourceBox.x + sourceBox.width + 120;
+    frame.y = sourceBox.y;
+    frame.resize(sourceBox.width, sourceBox.height);
+    frame.fills = [];
+    figma.currentPage.appendChild(frame);
+    const imageRule = (_a = config.namingRules.find((rule) => rule.kind === "IMAGE")) != null ? _a : defaultConfig.namingRules[1];
+    candidates.forEach((node, index) => {
+      const clone = node.clone();
+      clone.name = `${imageRule.prefix}_${String(index + 1).padStart(imageRule.digits, "0")}`;
+      frame.appendChild(clone);
+      if (options.mode === "preserve") {
+        const box = node.absoluteBoundingBox;
+        if (box) {
+          clone.x = box.x - sourceBox.x;
+          clone.y = box.y - sourceBox.y;
+        }
+      } else {
+        const size = options.preserveSize ? { width: clone.width, height: clone.height } : scaleSize(clone, options.maxGridItemSize);
+        if (!options.preserveSize && "resize" in clone) clone.resize(size.width, size.height);
+        const columns = Math.max(1, Math.floor(sourceBox.width / (options.maxGridItemSize + options.spacing)));
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        clone.x = col * (options.maxGridItemSize + options.spacing);
+        clone.y = row * (options.maxGridItemSize + options.spacing + 28);
+      }
+    });
+    if (options.mode === "grid") {
+      const rows = Math.ceil(candidates.length / Math.max(1, Math.floor(sourceBox.width / (options.maxGridItemSize + options.spacing))));
+      frame.resize(sourceBox.width, Math.max(sourceBox.height, rows * (options.maxGridItemSize + options.spacing + 28)));
+    }
+    figma.currentPage.selection = [frame];
+    figma.viewport.scrollAndZoomIntoView([frame]);
+    return { name: frame.name, count: candidates.length };
+  }
+  async function writeProjectConfig(config) {
+    await ensureCurrentPageLoaded();
+    const existing = figma.currentPage.findOne((node) => node.name === PROJECT_CONFIG_NODE_NAME);
+    const target = existing != null ? existing : figma.createFrame();
+    target.name = PROJECT_CONFIG_NODE_NAME;
+    target.setPluginData(CONFIG_KEY, JSON.stringify(normalizeConfig(config)));
+    if ("visible" in target) target.visible = false;
+    target.locked = true;
+    if (!existing) {
+      target.x = figma.viewport.center.x;
+      target.y = figma.viewport.center.y;
+      figma.currentPage.appendChild(target);
+    }
+  }
+  async function requestAiNames(nodes, settings, fallback) {
+    var _a, _b, _c;
+    if (!settings.enabled || !settings.apiKey || !settings.baseUrl || !settings.model) {
+      throw new Error("AI \u672A\u542F\u7528\u6216\u7F3A\u5C11 Base URL / API Key / Model");
+    }
+    const summaries = nodes.map((node) => ({
+      id: node.id,
+      type: node.type,
+      name: node.name,
+      kind: getNodeKind(node),
+      size: "width" in node ? { width: Math.round(node.width), height: Math.round(node.height) } : void 0,
+      text: node.type === "TEXT" ? node.characters.slice(0, 120) : void 0,
+      path: getNodePath(node)
+    }));
+    const response = await fetch(settings.baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: "system", content: settings.promptTemplate },
+          {
+            role: "user",
+            content: `Return only JSON array: [{"id":"node id","name":"PascalOrSnakeName"}]. Nodes: ${JSON.stringify(summaries)}. Fallback prefixes: ${JSON.stringify(fallback)}`
+          }
+        ],
+        temperature: 0.2
+      })
+    });
+    if (!response.ok) throw new Error(`AI \u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
+    const payload = await response.json();
+    const content = (_c = (_b = (_a = payload == null ? void 0 : payload.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content;
+    if (typeof content !== "string") throw new Error("AI \u8FD4\u56DE\u683C\u5F0F\u65E0\u6548");
+    const parsed = JSON.parse(extractJson(content));
+    const seen = /* @__PURE__ */ new Map();
+    return new Map(
+      parsed.filter((item) => item.id && item.name).map((item) => {
+        var _a2;
+        const base = safeName(item.name);
+        const next = ((_a2 = seen.get(base)) != null ? _a2 : 0) + 1;
+        seen.set(base, next);
+        return [item.id, next > 1 ? `${base}_${String(next).padStart(3, "0")}` : base];
+      })
+    );
+  }
+  function getNodeKind(node) {
+    if (node.type === "TEXT") return "TEXT";
+    if (hasImageFill(node)) return "IMAGE";
+    if (node.type === "INSTANCE" || node.type === "COMPONENT" || node.type === "COMPONENT_SET") return "COMPONENT";
+    if (node.type === "FRAME" || node.type === "SECTION") return "FRAME";
+    if (node.type === "VECTOR" || node.type === "BOOLEAN_OPERATION" || node.type === "RECTANGLE" || node.type === "ELLIPSE" || node.type === "POLYGON" || node.type === "STAR" || node.type === "LINE") {
+      return "SHAPE";
+    }
+    return "NODE";
+  }
+  function hasImageFill(node) {
+    return "fills" in node && Array.isArray(node.fills) && node.fills.some((paint) => paint.type === "IMAGE");
+  }
+  function getNodePath(node) {
+    const names = [];
+    let current = node;
+    while (current && current.type !== "PAGE" && current.type !== "DOCUMENT") {
+      names.unshift(current.name);
+      current = current.parent;
+    }
+    return names.join("/");
+  }
+  function safeName(value) {
+    const cleaned = value.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+    return cleaned || "Node";
+  }
+  function hexToRgb(hex) {
+    const normalized = hex.replace("#", "").trim();
+    const value = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
+    const number = Number.parseInt(value || "ffffff", 16);
+    return {
+      r: (number >> 16 & 255) / 255,
+      g: (number >> 8 & 255) / 255,
+      b: (number & 255) / 255
+    };
+  }
+  function extractJson(content) {
+    const match = content.match(/\[[\s\S]*\]/);
+    return match ? match[0] : content;
+  }
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+  function scaleSize(node, maxSize) {
+    const ratio = Math.min(1, maxSize / Math.max(node.width, node.height));
+    return { width: Math.max(1, node.width * ratio), height: Math.max(1, node.height * ratio) };
+  }
+})();
+//# sourceMappingURL=code.js.map
