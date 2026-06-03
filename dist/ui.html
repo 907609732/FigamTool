@@ -16,7 +16,7 @@
       h3 { font-size: 12px; }
       a { color: #0a66ff; text-decoration: none; }
       a:hover { text-decoration: underline; }
-      nav { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      nav { display: flex; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
       section { display: none; flex: 1; min-height: 0; overflow: auto; padding: 8px; }
       section.active { display: block; }
       button, input, select, textarea { width: 100%; min-height: 30px; border: 1px solid var(--figma-color-border, #d0d7de); border-radius: 6px; background: var(--figma-color-bg, #fff); color: inherit; font: inherit; }
@@ -33,7 +33,8 @@
       .brand { min-width: 0; }
       .brand p { overflow: hidden; color: var(--figma-color-text-secondary, #666); text-overflow: ellipsis; white-space: nowrap; }
       .top-actions { display: flex; gap: 6px; width: auto; }
-      .icon-btn, .tab { display: grid; width: 32px; min-width: 32px; height: 30px; place-items: center; padding: 0; font-weight: 700; }
+      .icon-btn, .tab { display: grid; width: auto; min-width: 44px; height: 30px; place-items: center; padding: 0 8px; font-weight: 700; }
+      .tab { min-width: 58px; }
       .tab { color: var(--figma-color-text-secondary, #666); }
       .tab.active { color: var(--figma-color-text, #1f2328); }
       .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
@@ -44,7 +45,12 @@
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
       .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-      .compact-actions { display: grid; grid-template-columns: repeat(3, 32px); gap: 6px; }
+      .compact-actions { display: grid; grid-template-columns: repeat(3, minmax(44px, 1fr)); gap: 6px; }
+      .quick-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .quick-row button { width: auto; min-width: 44px; min-height: 26px; padding: 0 8px; }
+      .inline-action { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; align-items: end; }
+      .percent-input { display: grid; grid-template-columns: minmax(0, 1fr) 18px; gap: 4px; align-items: center; }
+      .percent-input span { color: var(--figma-color-text-secondary, #666); }
       .check { display: flex; align-items: center; gap: 8px; min-height: 30px; }
       .check input { width: 14px; min-height: 14px; }
       .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
@@ -73,14 +79,14 @@
           <p id="selectionText">未选中节点</p>
         </div>
         <div class="top-actions">
-          <button id="refreshBtn" class="icon-btn" title="刷新选区">R</button>
-          <button id="settingsBtn" class="icon-btn" title="设置">S</button>
+          <button id="refreshBtn" class="icon-btn" title="刷新选区">刷新</button>
+          <button id="settingsBtn" class="icon-btn" title="设置">设置</button>
         </div>
       </header>
       <nav>
-        <button class="tab active" data-tab="lexicon" title="词库命名/属性">N</button>
-        <button class="tab" data-tab="ue" title="UE画板">U</button>
-        <button class="tab" data-tab="ai" title="设置/导入导出">S</button>
+        <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
+        <button class="tab" data-tab="ue" title="UE画板">UE</button>
+        <button class="tab" data-tab="ai" title="设置/导入导出">设置</button>
       </nav>
 
       <section id="lexicon" class="active">
@@ -98,13 +104,19 @@
               </div>
             </fieldset>
             <div class="compact-actions">
-              <button id="addTermBtn" class="icon-btn" title="新增词条">+</button>
-              <button id="duplicateTermBtn" class="icon-btn" title="复制词条">D</button>
-              <button id="deleteTermBtn" class="icon-btn danger" title="删除词条">-</button>
+              <button id="addTermBtn" class="icon-btn" title="新增词条">新增</button>
+              <button id="duplicateTermBtn" class="icon-btn" title="复制词条">复制</button>
+              <button id="deleteTermBtn" class="icon-btn danger" title="删除词条">删除</button>
             </div>
             <div id="termList" class="term-list"></div>
           </div>
           <div class="grid">
+            <div class="panel">
+              <div class="inline-action">
+                <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
+                <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
+              </div>
+            </div>
             <fieldset>
               <legend>命名和属性</legend>
               <div id="termEditor" class="grid"></div>
@@ -130,10 +142,22 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.4</span>
+            <span id="versionText">V0.1.5</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
+        </div>
+        <h2>百度翻译</h2>
+        <div class="grid">
+          <div class="two grid">
+            <label>App ID<input id="baiduAppId"></label>
+            <label>密钥<input id="baiduSecretKey" type="password"></label>
+          </div>
+          <div class="two grid">
+            <label>From<input id="baiduFrom" placeholder="zh"></label>
+            <label>To<input id="baiduTo" placeholder="en"></label>
+          </div>
+          <button id="saveTranslateBtn">保存百度翻译</button>
         </div>
         <h2>词库方案</h2>
         <div class="actions">
@@ -164,7 +188,7 @@
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
-      var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
+      var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPx: 42, lineHeightPercent: 150, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
       var config = null;
       var selection = { count: 0, roots: [] };
       var activeTermId = "";
@@ -180,22 +204,39 @@
             { id: "node", label: "Node 其他", kind: "NODE", prefix: "Node", digits: 3 }
           ],
           lexicon: [
-            term("lex-text", "Txt", "Text 文本", "TEXT", "普通文字层", true, 24, 28),
-            term("lex-title", "Title", "Title 标题", "TEXT", "标题文字", true, 32, 38),
-            term("lex-label", "Label", "Label 标签", "TEXT", "说明/标签文字", true, 18, 22),
-            term("lex-image", "Img", "Image 图片", "IMAGE", "图片资源", false, 24, 28),
-            term("lex-icon", "Icon", "Icon 图标", "IMAGE", "小图标/装饰图", false, 24, 28),
-            term("lex-button", "Btn", "Button 按钮", "COMPONENT", "按钮组件或按钮组", false, 24, 28),
-            term("lex-panel", "Panel", "Panel 面板", "FRAME", "弹窗/面板容器", false, 24, 28),
-            term("lex-bg", "Bg", "Background 背景", "SHAPE", "背景块/底图", false, 24, 28)
+            term("lex-text", "Txt", "Text 文本", "TEXT", "普通文字层", true, 28),
+            term("lex-text-name", "TxtName", "TxtName 名称", "TEXT", "名称文字", true, 28),
+            term("lex-text-time", "TxtTime", "TxtTime 时间", "TEXT", "时间文字", true, 28),
+            term("lex-text-tag", "TxtTag", "TxtTag 标签", "TEXT", "标签文字", true, 28),
+            term("lex-text-num", "TxtNum", "TxtNum 数字", "TEXT", "数字文字", true, 32),
+            term("lex-text-task", "TxtTask", "TxtTask 任务", "TEXT", "任务文字", true, 28),
+            term("lex-text-desc", "TxtDesc", "TxtDesc 描述", "TEXT", "描述文字", true, 28),
+            term("lex-text-lv", "TxtLv", "TxtLv 等级", "TEXT", "等级文字", true, 28),
+            term("lex-title", "Title", "Title 标题", "TEXT", "标题文字", true, 32),
+            term("lex-label", "Label", "Label 标签", "TEXT", "说明/标签文字", true, 28),
+            term("lex-bg-image", "BG", "BG 背景图", "IMAGE", "背景图片", false, 28),
+            term("lex-image", "Img", "Image 图片", "IMAGE", "图片资源", false, 28),
+            term("lex-image-tag", "ImgTag", "ImgTag 图片标签", "IMAGE", "图片标签", false, 28),
+            term("lex-icon", "Icon", "Icon 图标", "IMAGE", "小图标/装饰图", false, 28),
+            term("lex-ornament", "Ornament", "Ornament 装饰品", "IMAGE", "装饰图片", false, 28),
+            term("lex-normal", "Normal", "Normal 常态", "IMAGE", "常态图片", false, 28),
+            term("lex-hover", "Hover", "Hover 悬浮态", "IMAGE", "悬浮态图片", false, 28),
+            term("lex-selected", "Selected", "Selected 选中态", "IMAGE", "选中态图片", false, 28),
+            term("lex-disabled", "Disabled", "Disabled 禁用态", "IMAGE", "禁用态图片", false, 28),
+            term("lex-mask", "Mask", "Mask 遮罩", "IMAGE", "遮罩图片", false, 28),
+            term("lex-button", "Btn", "Button 按钮", "COMPONENT", "按钮组件或按钮组", false, 28),
+            term("lex-content", "Content", "Content 内容", "FRAME", "Frame 内容容器", false, 28),
+            term("lex-panel", "Panel", "Panel 面板", "FRAME", "弹窗/面板容器", false, 28),
+            term("lex-bg", "Bg", "Background 背景", "SHAPE", "背景块/底图", false, 28)
           ],
-          propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPx: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
+          propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
           ueDefaults: { mode: "preserve", spacing: 24, preserveSize: true, includeHidden: false, includeLocked: false, maxGridItemSize: 160 },
-          aiSettings: { enabled: false, provider: "openai-compatible", baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." }
+          aiSettings: { enabled: false, provider: "openai-compatible", baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." },
+          translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en" }
         };
       }
-      function term(id, word, label, kind, description, applyProperties, fontSize, lineHeightPx) {
-        return { id: id, word: word, label: label, kind: kind, prefix: word, description: description, applyProperties: applyProperties, enabled: { fontFamily: applyProperties, fontStyle: applyProperties, fontSize: applyProperties, lineHeightPx: applyProperties, textFill: applyProperties }, values: Object.assign({}, defaultValues, { fontSize: fontSize, lineHeightPx: lineHeightPx }) };
+      function term(id, word, label, kind, description, applyProperties, fontSize) {
+        return { id: id, word: word, label: label, kind: kind, prefix: word, description: description, applyProperties: applyProperties, enabled: { fontFamily: applyProperties, fontStyle: applyProperties, fontSize: applyProperties, lineHeightPercent: applyProperties, textAlignHorizontal: applyProperties, textAlignVertical: applyProperties, textFill: applyProperties }, values: Object.assign({}, defaultValues, { fontSize: fontSize, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER" }) };
       }
       function post(message) { parent.postMessage({ pluginMessage: message }, "*"); }
       function status(text) { document.getElementById("status").textContent = text; }
@@ -216,6 +257,10 @@
         if (!config.lexicon) config.lexicon = fallback.lexicon;
         config.lexicon = config.lexicon.map(function(entry, index) {
           var oldWord = entry.word || entry.prefix || entry.label || "Node";
+          var values = Object.assign({}, defaultValues, entry.values || {});
+          if (values.lineHeightPercent == null) values.lineHeightPercent = 150;
+          if (!values.textAlignHorizontal) values.textAlignHorizontal = "CENTER";
+          if (!values.textAlignVertical) values.textAlignVertical = "CENTER";
           entry.id = entry.id || "lex-" + index;
           entry.word = oldWord;
           entry.label = entry.label || oldWord;
@@ -224,11 +269,16 @@
           entry.description = entry.description || "";
           entry.applyProperties = !!entry.applyProperties;
           entry.enabled = entry.enabled || {};
-          entry.values = Object.assign({}, defaultValues, entry.values || {});
+          entry.values = values;
           return entry;
         });
+        var existing = {};
+        config.lexicon.forEach(function(entry) { existing[entry.id] = true; });
+        fallback.lexicon.forEach(function(entry) { if (!existing[entry.id]) config.lexicon.push(JSON.parse(JSON.stringify(entry))); });
         if (!config.aiSettings) config.aiSettings = fallback.aiSettings;
         if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible";
+        if (!config.translateSettings) config.translateSettings = fallback.translateSettings;
+        config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings);
         if (!config.ueDefaults) config.ueDefaults = fallback.ueDefaults;
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
       }
@@ -275,14 +325,17 @@
             '<label>说明<input id="termDescription" value="' + esc(entry.description) + '"></label>' +
           '</div>' +
           '<label class="check"><input id="termApplyProperties" type="checkbox" ' + (entry.applyProperties ? "checked" : "") + '>点击词条时同时应用属性</label>' +
+          '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button></div>' +
           '<div class="prop-grid">' +
             prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
             prop("fontStyle", "字重", "text", v.fontStyle, enabled.fontStyle) +
             prop("fontSize", "字号", "number", v.fontSize, enabled.fontSize) +
-            prop("lineHeightPx", "行高", "number", v.lineHeightPx, enabled.lineHeightPx) +
+            prop("lineHeightPercent", "行高%", "number", v.lineHeightPercent, enabled.lineHeightPercent || enabled.lineHeightPx) +
             prop("letterSpacing", "字距", "number", v.letterSpacing, enabled.letterSpacing) +
             prop("textFill", "颜色", "text", v.textFill, enabled.textFill) +
-            prop("opacity", "透明度", "number", v.opacity, enabled.opacity) +
+            percentProp("opacity", "透明度", v.opacity, enabled.opacity) +
+            selectProp("textAlignHorizontal", "横向对齐", v.textAlignHorizontal, enabled.textAlignHorizontal, [["LEFT","Left"],["CENTER","Center"],["RIGHT","Right"],["JUSTIFIED","Justify"]]) +
+            selectProp("textAlignVertical", "纵向对齐", v.textAlignVertical, enabled.textAlignVertical, [["TOP","Top"],["CENTER","Middle"],["BOTTOM","Bottom"]]) +
             prop("cornerRadius", "圆角", "number", v.cornerRadius, enabled.cornerRadius) +
           '</div>';
         ["termWord","termLabel","termKind","termDescription","termApplyProperties"].forEach(function(id) {
@@ -291,9 +344,17 @@
         });
         document.querySelectorAll("[data-prop-key]").forEach(function(input) { input.onchange = syncTermEditor; input.oninput = syncTermEditor; });
         document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncTermEditor; });
+        document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { setValue("prop-fontSize", btn.dataset.quickFont); syncTermEditor(); }; });
+        document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { setValue("prop-textFill", btn.dataset.quickColor); syncTermEditor(); }; });
       }
       function prop(key, label, type, value, enabled) {
-        return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
+        return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input id="prop-' + key + '" data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
+      }
+      function percentProp(key, label, value, enabled) {
+        return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><div class="percent-input"><input id="prop-' + key + '" data-prop-key="' + key + '" data-prop-format="percent" type="number" min="0" max="100" value="' + Math.round(Number(value || 0) * 100) + '"><span>%</span></div></div>';
+      }
+      function selectProp(key, label, value, enabled, options) {
+        return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><select id="prop-' + key + '" data-prop-key="' + key + '">' + options.map(function(option) { return '<option value="' + option[0] + '" ' + (option[0] === value ? "selected" : "") + '>' + option[1] + '</option>'; }).join("") + '</select></div>';
       }
       function syncTermEditor() {
         var entry = activeTerm();
@@ -309,13 +370,13 @@
         document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { entry.enabled[input.dataset.propEnabled] = input.checked; });
         document.querySelectorAll("[data-prop-key]").forEach(function(input) {
           var key = input.dataset.propKey;
-          entry.values[key] = input.type === "number" ? Number(input.value) : input.value;
+          entry.values[key] = input.dataset.propFormat === "percent" ? Number(input.value) / 100 : input.type === "number" ? Number(input.value) : input.value;
         });
         save();
         renderTerms();
       }
       function addTerm() {
-        var next = term("lex-" + Date.now(), "NewName", "NewName", "TEXT", "", true, 24, 28);
+        var next = term("lex-" + Date.now(), "NewName", "NewName", selectedKind() || "TEXT", "", true, 28);
         config.lexicon.push(next);
         activeTermId = next.id;
         save();
@@ -349,6 +410,10 @@
         setValue("aiModel", config.aiSettings.model);
         setValue("aiKey", config.aiSettings.apiKey);
         setValue("aiPrompt", config.aiSettings.promptTemplate);
+        setValue("baiduAppId", config.translateSettings.appId);
+        setValue("baiduSecretKey", config.translateSettings.secretKey);
+        setValue("baiduFrom", config.translateSettings.from);
+        setValue("baiduTo", config.translateSettings.to);
         setValue("ueMode", config.ueDefaults.mode);
         setValue("ueSpacing", config.ueDefaults.spacing);
         setValue("ueMax", config.ueDefaults.maxGridItemSize);
@@ -357,6 +422,13 @@
         setChecked("ueIncludeLocked", config.ueDefaults.includeLocked);
       }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.apiKey = value("aiKey"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
+      function syncTranslate() { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; save(); status("百度翻译配置已保存"); }
+      function translateAndRename() {
+        var text = value("translateText").trim();
+        if (!text) { status("请先输入中文"); return; }
+        syncTranslate();
+        post({ type: "TRANSLATE_AND_RENAME", text: text, options: renameOptions(), config: config });
+      }
       function applyAiPreset(provider) {
         config.aiSettings.provider = provider;
         if (provider === "kimi") {
@@ -372,10 +444,10 @@
         status(provider === "kimi" ? "已切换到 Kimi API 配置" : "已切换到 OpenAI 兼容配置");
       }
       function exportCsv() {
-        var rows = [["word","label","kind","description","applyProperties","fontFamily","fontStyle","fontSize","lineHeightPx","letterSpacing","textFill","opacity","cornerRadius"]];
+        var rows = [["word","label","kind","description","applyProperties","fontFamily","fontStyle","fontSize","lineHeightPercent","letterSpacing","textAlignHorizontal","textAlignVertical","textFill","opacityPercent","cornerRadius"]];
         config.lexicon.forEach(function(entry) {
           var v = Object.assign({}, defaultValues, entry.values || {});
-          rows.push([entry.word, entry.label, entry.kind, entry.description, entry.applyProperties ? "TRUE" : "FALSE", v.fontFamily, v.fontStyle, v.fontSize, v.lineHeightPx, v.letterSpacing, v.textFill, v.opacity, v.cornerRadius]);
+          rows.push([entry.word, entry.label, entry.kind, entry.description, entry.applyProperties ? "TRUE" : "FALSE", v.fontFamily, v.fontStyle, v.fontSize, v.lineHeightPercent, v.letterSpacing, v.textAlignHorizontal, v.textAlignVertical, v.textFill, Math.round(Number(v.opacity || 0) * 100), v.cornerRadius]);
         });
         var csv = rows.map(function(row) { return row.map(csvCell).join(","); }).join("\n");
         setValue("ioBox", csv);
@@ -392,7 +464,8 @@
         config.lexicon = rows.filter(function(row) { return row[index.word] || row[0]; }).map(function(row, i) {
           var word = row[index.word] || row[0] || "Node";
           var apply = String(row[index.applyProperties] || "").toUpperCase() === "TRUE";
-          return { id: "lex-" + Date.now() + "-" + i, word: word, label: row[index.label] || word, kind: row[index.kind] || "TEXT", prefix: word, description: row[index.description] || "", applyProperties: apply, enabled: { fontFamily: apply, fontStyle: apply, fontSize: apply, lineHeightPx: apply, letterSpacing: apply, textFill: apply, opacity: apply, cornerRadius: apply }, values: Object.assign({}, defaultValues, { fontFamily: row[index.fontFamily] || "Inter", fontStyle: row[index.fontStyle] || "Regular", fontSize: Number(row[index.fontSize] || 24), lineHeightPx: Number(row[index.lineHeightPx] || 28), letterSpacing: Number(row[index.letterSpacing] || 0), textFill: row[index.textFill] || "#FFFFFF", opacity: Number(row[index.opacity] || 1), cornerRadius: Number(row[index.cornerRadius] || 0) }) };
+          var opacityPercent = row[index.opacityPercent] || (index.opacity == null ? "" : String(Number(row[index.opacity] || 1) * 100));
+          return { id: "lex-" + Date.now() + "-" + i, word: word, label: row[index.label] || word, kind: row[index.kind] || "TEXT", prefix: word, description: row[index.description] || "", applyProperties: apply, enabled: { fontFamily: apply, fontStyle: apply, fontSize: apply, lineHeightPercent: apply, letterSpacing: apply, textAlignHorizontal: apply, textAlignVertical: apply, textFill: apply, opacity: apply, cornerRadius: apply }, values: Object.assign({}, defaultValues, { fontFamily: row[index.fontFamily] || "Inter", fontStyle: row[index.fontStyle] || "Regular", fontSize: Number(row[index.fontSize] || 28), lineHeightPercent: Number(row[index.lineHeightPercent] || row[index.lineHeightPx] || 150), letterSpacing: Number(row[index.letterSpacing] || 0), textAlignHorizontal: row[index.textAlignHorizontal] || "CENTER", textAlignVertical: row[index.textAlignVertical] || "CENTER", textFill: row[index.textFill] || "#FFFFFF", opacity: Number(opacityPercent || 100) / 100, cornerRadius: Number(row[index.cornerRadius] || 0) }) };
         });
         activeTermId = config.lexicon[0] ? config.lexicon[0].id : "";
         save();
@@ -455,6 +528,7 @@
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = deleteTerm;
+      document.getElementById("translateBtn").onclick = translateAndRename;
       document.getElementById("createUeBtn").onclick = function() { config.ueDefaults = ueOptions(); save(); post({ type: "CREATE_UE_FRAME", options: config.ueDefaults, config: config }); };
       document.getElementById("exportCsvBtn").onclick = exportCsv;
       document.getElementById("importCsvBtn").onclick = importCsv;
@@ -465,7 +539,9 @@
       document.getElementById("openAiPresetBtn").onclick = function() { applyAiPreset("openai-compatible"); };
       document.getElementById("kimiPresetBtn").onclick = function() { applyAiPreset("kimi"); };
       document.getElementById("saveAiBtn").onclick = syncAi;
+      document.getElementById("saveTranslateBtn").onclick = syncTranslate;
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
+      ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
       document.getElementById("resizeGrip").onmousedown = function(event) {
         event.preventDefault();
         var startX = event.clientX, startY = event.clientY, startW = window.innerWidth, startH = window.innerHeight;

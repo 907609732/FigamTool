@@ -7,7 +7,7 @@
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": ["*"],
-    "reasoning": "Optional AI naming suggestions can call a user-configured compatible API endpoint."
+    "reasoning": "Optional AI naming suggestions and Baidu translation naming can call user-configured API endpoints."
   },
   "documentAccess": "dynamic-page"
 }

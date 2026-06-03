@@ -39,8 +39,93 @@
         prefix: "Txt",
         description: "\u666E\u901A\u6587\u5B57\u5C42",
         applyProperties: true,
-        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
-        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, textFill: "#FFFFFF" }
+        enabled: {
+          fontFamily: true,
+          fontStyle: true,
+          fontSize: true,
+          lineHeightPercent: true,
+          textAlignHorizontal: true,
+          textAlignVertical: true,
+          textFill: true
+        },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-name",
+        word: "TxtName",
+        label: "TxtName \u540D\u79F0",
+        kind: "TEXT",
+        prefix: "TxtName",
+        description: "\u540D\u79F0\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-time",
+        word: "TxtTime",
+        label: "TxtTime \u65F6\u95F4",
+        kind: "TEXT",
+        prefix: "TxtTime",
+        description: "\u65F6\u95F4\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-tag",
+        word: "TxtTag",
+        label: "TxtTag \u6807\u7B7E",
+        kind: "TEXT",
+        prefix: "TxtTag",
+        description: "\u6807\u7B7E\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-num",
+        word: "TxtNum",
+        label: "TxtNum \u6570\u5B57",
+        kind: "TEXT",
+        prefix: "TxtNum",
+        description: "\u6570\u5B57\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 32, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-task",
+        word: "TxtTask",
+        label: "TxtTask \u4EFB\u52A1",
+        kind: "TEXT",
+        prefix: "TxtTask",
+        description: "\u4EFB\u52A1\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-desc",
+        word: "TxtDesc",
+        label: "TxtDesc \u63CF\u8FF0",
+        kind: "TEXT",
+        prefix: "TxtDesc",
+        description: "\u63CF\u8FF0\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-text-lv",
+        word: "TxtLv",
+        label: "TxtLv \u7B49\u7EA7",
+        kind: "TEXT",
+        prefix: "TxtLv",
+        description: "\u7B49\u7EA7\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
       },
       {
         id: "lex-title",
@@ -50,8 +135,8 @@
         prefix: "Title",
         description: "\u6807\u9898\u6587\u5B57",
         applyProperties: true,
-        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
-        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 32, lineHeightPx: 38, textFill: "#FFFFFF" }
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 32, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
       },
       {
         id: "lex-label",
@@ -61,12 +146,21 @@
         prefix: "Label",
         description: "\u8BF4\u660E/\u6807\u7B7E\u6587\u5B57",
         applyProperties: true,
-        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
-        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 18, lineHeightPx: 22, textFill: "#FFFFFF" }
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPercent: true, textAlignHorizontal: true, textAlignVertical: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", textFill: "#FFFFFF" }
       },
+      { id: "lex-bg-image", word: "BG", label: "BG \u80CC\u666F\u56FE", kind: "IMAGE", prefix: "BG", description: "\u80CC\u666F\u56FE\u7247", applyProperties: false },
       { id: "lex-image", word: "Img", label: "Image \u56FE\u7247", kind: "IMAGE", prefix: "Img", description: "\u56FE\u7247\u8D44\u6E90", applyProperties: false },
+      { id: "lex-image-tag", word: "ImgTag", label: "ImgTag \u56FE\u7247\u6807\u7B7E", kind: "IMAGE", prefix: "ImgTag", description: "\u56FE\u7247\u6807\u7B7E", applyProperties: false },
       { id: "lex-icon", word: "Icon", label: "Icon \u56FE\u6807", kind: "IMAGE", prefix: "Icon", description: "\u5C0F\u56FE\u6807/\u88C5\u9970\u56FE", applyProperties: false },
+      { id: "lex-ornament", word: "Ornament", label: "Ornament \u88C5\u9970\u54C1", kind: "IMAGE", prefix: "Ornament", description: "\u88C5\u9970\u56FE\u7247", applyProperties: false },
+      { id: "lex-normal", word: "Normal", label: "Normal \u5E38\u6001", kind: "IMAGE", prefix: "Normal", description: "\u5E38\u6001\u56FE\u7247", applyProperties: false },
+      { id: "lex-hover", word: "Hover", label: "Hover \u60AC\u6D6E\u6001", kind: "IMAGE", prefix: "Hover", description: "\u60AC\u6D6E\u6001\u56FE\u7247", applyProperties: false },
+      { id: "lex-selected", word: "Selected", label: "Selected \u9009\u4E2D\u6001", kind: "IMAGE", prefix: "Selected", description: "\u9009\u4E2D\u6001\u56FE\u7247", applyProperties: false },
+      { id: "lex-disabled", word: "Disabled", label: "Disabled \u7981\u7528\u6001", kind: "IMAGE", prefix: "Disabled", description: "\u7981\u7528\u6001\u56FE\u7247", applyProperties: false },
+      { id: "lex-mask", word: "Mask", label: "Mask \u906E\u7F69", kind: "IMAGE", prefix: "Mask", description: "\u906E\u7F69\u56FE\u7247", applyProperties: false },
       { id: "lex-button", word: "Btn", label: "Button \u6309\u94AE", kind: "COMPONENT", prefix: "Btn", description: "\u6309\u94AE\u7EC4\u4EF6\u6216\u6309\u94AE\u7EC4", applyProperties: false },
+      { id: "lex-content", word: "Content", label: "Content \u5185\u5BB9", kind: "FRAME", prefix: "Content", description: "Frame \u5185\u5BB9\u5BB9\u5668", applyProperties: false },
       { id: "lex-panel", word: "Panel", label: "Panel \u9762\u677F", kind: "FRAME", prefix: "Panel", description: "\u5F39\u7A97/\u9762\u677F\u5BB9\u5668", applyProperties: false },
       { id: "lex-group", word: "Group", label: "Group \u7EC4", kind: "FRAME", prefix: "Group", description: "\u666E\u901A\u5206\u7EC4\u5BB9\u5668", applyProperties: false },
       { id: "lex-shape", word: "Shape", label: "Shape \u56FE\u5F62", kind: "SHAPE", prefix: "Shape", description: "\u57FA\u7840\u5F62\u72B6", applyProperties: false },
@@ -81,7 +175,7 @@
         enabled: {
           opacity: true,
           fontSize: true,
-          lineHeightPx: true,
+          lineHeightPercent: true,
           letterSpacing: true,
           textAlignHorizontal: true,
           textAlignVertical: true
@@ -93,8 +187,9 @@
           blendMode: "NORMAL",
           fontFamily: "Inter",
           fontStyle: "Regular",
-          fontSize: 24,
-          lineHeightPx: 28,
+          fontSize: 28,
+          lineHeightPx: 42,
+          lineHeightPercent: 150,
           letterSpacing: 0,
           textAlignHorizontal: "CENTER",
           textAlignVertical: "CENTER",
@@ -126,6 +221,13 @@
       apiKey: "",
       model: "gpt-4.1-mini",
       promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name. Use short English asset names and preserve prefixes when useful."
+    },
+    translateSettings: {
+      provider: "baidu",
+      appId: "",
+      secretKey: "",
+      from: "zh",
+      to: "en"
     }
   };
 
@@ -195,6 +297,12 @@
         figma.notify(`\u5DF2\u5E94\u7528\u8BCD\u6761\uFF1A${result.word}`);
         return;
       }
+      if (message.type === "TRANSLATE_AND_RENAME") {
+        const result = await translateAndRename(message.text, message.options, message.config);
+        post({ type: "APPLY_RESULT", message: `\u767E\u5EA6\u7FFB\u8BD1\u4E3A ${result.name}\uFF0C\u5DF2\u91CD\u547D\u540D ${result.renamed} \u4E2A\u8282\u70B9` });
+        figma.notify(`\u5DF2\u7FFB\u8BD1\u547D\u540D\uFF1A${result.name}`);
+        return;
+      }
       if (message.type === "CREATE_UE_FRAME") {
         const created = await createUeFrame(message.options, message.config);
         post({ type: "UE_RESULT", message: `\u5DF2\u751F\u6210 ${created.name}\uFF0C\u5305\u542B ${created.count} \u4E2A\u8282\u70B9` });
@@ -219,25 +327,31 @@
     await figma.clientStorage.setAsync(CONFIG_KEY, normalizeConfig(config));
   }
   function normalizeConfig(input) {
-    var _a, _b;
+    var _a, _b, _c;
     if (!input || typeof input !== "object") return defaultConfig;
     const partial = input;
     const ueDefaults = (_a = partial.ueDefaults) != null ? _a : {};
     const aiSettings = (_b = partial.aiSettings) != null ? _b : {};
+    const translateSettings = (_c = partial.translateSettings) != null ? _c : {};
     return {
       namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
       lexicon: normalizeLexicon(partial.lexicon),
       propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
       ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
-      aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings)
+      aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings),
+      translateSettings: Object.assign({}, defaultConfig.translateSettings, translateSettings)
     };
   }
   function normalizeLexicon(input) {
     const source = Array.isArray(input) ? input : defaultConfig.lexicon;
-    return source.map((entry, index) => {
+    const normalized = source.map((entry, index) => {
       var _a, _b;
       const partial = entry;
       const fallback = (_a = defaultConfig.lexicon[index]) != null ? _a : defaultConfig.lexicon[defaultConfig.lexicon.length - 1];
+      const values = Object.assign({}, partial.values || {});
+      if (values.lineHeightPercent == null) values.lineHeightPercent = 150;
+      if (values.textAlignHorizontal == null) values.textAlignHorizontal = "CENTER";
+      if (values.textAlignVertical == null) values.textAlignVertical = "CENTER";
       return {
         id: partial.id || `lex-${index + 1}`,
         word: partial.word || partial.prefix || partial.label || fallback.word,
@@ -247,9 +361,14 @@
         description: partial.description || "",
         applyProperties: (_b = partial.applyProperties) != null ? _b : false,
         enabled: partial.enabled || {},
-        values: partial.values || {}
+        values
       };
     });
+    const existingIds = new Set(normalized.map((entry) => entry.id));
+    for (const entry of defaultConfig.lexicon) {
+      if (!existingIds.has(entry.id)) normalized.push(entry);
+    }
+    return normalized;
   }
   async function ensureCurrentPageLoaded() {
     await figma.currentPage.loadAsync();
@@ -374,6 +493,40 @@
     }
     return { renamed, properties, word: baseName };
   }
+  async function translateAndRename(text, options, config) {
+    const normalized = normalizeConfig(config);
+    const translated = await requestBaiduTranslation(text.trim(), normalized.translateSettings);
+    const baseName = toNodeName(translated);
+    const targets = await collectTargets(options);
+    if (!targets.length) throw new Error("\u6CA1\u6709\u53EF\u5904\u7406\u7684\u9009\u4E2D\u8282\u70B9");
+    let renamed = 0;
+    for (let index = 0; index < targets.length; index += 1) {
+      targets[index].name = targets.length > 1 ? `${baseName}_${String(index + 1).padStart(2, "0")}` : baseName;
+      renamed += 1;
+    }
+    return { renamed, name: baseName };
+  }
+  async function requestBaiduTranslation(text, settings) {
+    if (!text) throw new Error("\u8BF7\u8F93\u5165\u8981\u7FFB\u8BD1\u7684\u4E2D\u6587");
+    if (!settings.appId || !settings.secretKey) throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u586B\u5199\u767E\u5EA6\u7FFB\u8BD1 AppID \u548C\u5BC6\u94A5");
+    const salt = String(Date.now());
+    const sign = md5(`${settings.appId}${text}${salt}${settings.secretKey}`);
+    const params = new URLSearchParams({
+      q: text,
+      from: settings.from || "zh",
+      to: settings.to || "en",
+      appid: settings.appId,
+      salt,
+      sign
+    });
+    const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${params.toString()}`);
+    if (!response.ok) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
+    const payload = await response.json();
+    if (payload == null ? void 0 : payload.error_code) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF1A${payload.error_code} ${payload.error_msg || ""}`.trim());
+    const translated = Array.isArray(payload == null ? void 0 : payload.trans_result) ? payload.trans_result.map((item) => item.dst || "").join(" ") : "";
+    if (!translated.trim()) throw new Error("\u767E\u5EA6\u7FFB\u8BD1\u6CA1\u6709\u8FD4\u56DE\u6709\u6548\u7ED3\u679C");
+    return translated;
+  }
   function lexiconEntryToPreset(entry) {
     var _a, _b;
     if (!entry.applyProperties) return null;
@@ -441,7 +594,7 @@
     if ((enabled.imageScaleMode || enabled.textFill) && "fills" in node && Array.isArray(node.fills)) {
       const fills = node.fills.map((paint) => {
         if (enabled.imageScaleMode && paint.type === "IMAGE") return __spreadProps(__spreadValues({}, paint), { scaleMode: values.imageScaleMode });
-        if (enabled.textFill && paint.type === "SOLID") return __spreadProps(__spreadValues({}, paint), { color: hexToRgb(values.textFill) });
+        if (enabled.textFill && paint.type === "SOLID") return __spreadValues(__spreadValues({}, paint), hexToSolidPaint(values.textFill));
         return paint;
       });
       node.fills = fills;
@@ -450,6 +603,7 @@
     return changed;
   }
   async function applyTextPreset(node, preset) {
+    var _a, _b;
     const { enabled, values } = preset;
     let changed = false;
     if (enabled.fontFamily || enabled.fontStyle) {
@@ -472,7 +626,11 @@
       changed = true;
     }
     if (enabled.lineHeightPx) {
-      node.lineHeight = { unit: "PIXELS", value: values.lineHeightPx };
+      node.lineHeight = { unit: "PERCENT", value: (_a = values.lineHeightPercent) != null ? _a : 150 };
+      changed = true;
+    }
+    if (enabled.lineHeightPercent) {
+      node.lineHeight = { unit: "PERCENT", value: (_b = values.lineHeightPercent) != null ? _b : 150 };
       changed = true;
     }
     if (enabled.letterSpacing) {
@@ -492,7 +650,7 @@
       changed = true;
     }
     if (enabled.textFill) {
-      node.fills = [{ type: "SOLID", color: hexToRgb(values.textFill) }];
+      node.fills = [hexToSolidPaint(values.textFill)];
       changed = true;
     }
     return changed;
@@ -635,15 +793,29 @@
     const cleaned = value.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
     return cleaned || "Node";
   }
-  function hexToRgb(hex) {
-    const normalized = hex.replace("#", "").trim();
+  function hexToSolidPaint(hex2) {
+    const { color, opacity } = hexToRgbAndOpacity(hex2);
+    return opacity == null ? { type: "SOLID", color } : { type: "SOLID", color, opacity };
+  }
+  function hexToRgbAndOpacity(hex2) {
+    const normalized = hex2.replace("#", "").trim();
     const value = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
-    const number = Number.parseInt(value || "ffffff", 16);
+    const rgbValue = (value || "ffffff").slice(0, 6).padEnd(6, "f");
+    const number = Number.parseInt(rgbValue, 16);
+    const opacity = value.length >= 8 ? Number.parseInt(value.slice(6, 8), 16) / 255 : void 0;
     return {
-      r: (number >> 16 & 255) / 255,
-      g: (number >> 8 & 255) / 255,
-      b: (number & 255) / 255
+      color: {
+        r: (number >> 16 & 255) / 255,
+        g: (number >> 8 & 255) / 255,
+        b: (number & 255) / 255
+      },
+      opacity
     };
+  }
+  function toNodeName(value) {
+    const words = value.normalize("NFKD").replace(/['’]/g, "").split(/[^A-Za-z0-9]+/).filter(Boolean);
+    if (!words.length) return safeName(value);
+    return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
   }
   function extractJson(content) {
     const match = content.match(/\[[\s\S]*\]/);
@@ -655,6 +827,122 @@
   function scaleSize(node, maxSize) {
     const ratio = Math.min(1, maxSize / Math.max(node.width, node.height));
     return { width: Math.max(1, node.width * ratio), height: Math.max(1, node.height * ratio) };
+  }
+  function md5(input) {
+    const text = unescape(encodeURIComponent(input));
+    const words = [];
+    for (let i = 0; i < text.length; i += 1) {
+      words[i >> 2] |= text.charCodeAt(i) << i % 4 * 8;
+    }
+    words[text.length >> 2] |= 128 << text.length % 4 * 8;
+    words[(text.length + 8 >> 6) * 16 + 14] = text.length * 8;
+    let a = 1732584193;
+    let b = -271733879;
+    let c = -1732584194;
+    let d = 271733878;
+    for (let i = 0; i < words.length; i += 16) {
+      const oa = a;
+      const ob = b;
+      const oc = c;
+      const od = d;
+      a = ff(a, b, c, d, words[i + 0] || 0, 7, -680876936);
+      d = ff(d, a, b, c, words[i + 1] || 0, 12, -389564586);
+      c = ff(c, d, a, b, words[i + 2] || 0, 17, 606105819);
+      b = ff(b, c, d, a, words[i + 3] || 0, 22, -1044525330);
+      a = ff(a, b, c, d, words[i + 4] || 0, 7, -176418897);
+      d = ff(d, a, b, c, words[i + 5] || 0, 12, 1200080426);
+      c = ff(c, d, a, b, words[i + 6] || 0, 17, -1473231341);
+      b = ff(b, c, d, a, words[i + 7] || 0, 22, -45705983);
+      a = ff(a, b, c, d, words[i + 8] || 0, 7, 1770035416);
+      d = ff(d, a, b, c, words[i + 9] || 0, 12, -1958414417);
+      c = ff(c, d, a, b, words[i + 10] || 0, 17, -42063);
+      b = ff(b, c, d, a, words[i + 11] || 0, 22, -1990404162);
+      a = ff(a, b, c, d, words[i + 12] || 0, 7, 1804603682);
+      d = ff(d, a, b, c, words[i + 13] || 0, 12, -40341101);
+      c = ff(c, d, a, b, words[i + 14] || 0, 17, -1502002290);
+      b = ff(b, c, d, a, words[i + 15] || 0, 22, 1236535329);
+      a = gg(a, b, c, d, words[i + 1] || 0, 5, -165796510);
+      d = gg(d, a, b, c, words[i + 6] || 0, 9, -1069501632);
+      c = gg(c, d, a, b, words[i + 11] || 0, 14, 643717713);
+      b = gg(b, c, d, a, words[i + 0] || 0, 20, -373897302);
+      a = gg(a, b, c, d, words[i + 5] || 0, 5, -701558691);
+      d = gg(d, a, b, c, words[i + 10] || 0, 9, 38016083);
+      c = gg(c, d, a, b, words[i + 15] || 0, 14, -660478335);
+      b = gg(b, c, d, a, words[i + 4] || 0, 20, -405537848);
+      a = gg(a, b, c, d, words[i + 9] || 0, 5, 568446438);
+      d = gg(d, a, b, c, words[i + 14] || 0, 9, -1019803690);
+      c = gg(c, d, a, b, words[i + 3] || 0, 14, -187363961);
+      b = gg(b, c, d, a, words[i + 8] || 0, 20, 1163531501);
+      a = gg(a, b, c, d, words[i + 13] || 0, 5, -1444681467);
+      d = gg(d, a, b, c, words[i + 2] || 0, 9, -51403784);
+      c = gg(c, d, a, b, words[i + 7] || 0, 14, 1735328473);
+      b = gg(b, c, d, a, words[i + 12] || 0, 20, -1926607734);
+      a = hh(a, b, c, d, words[i + 5] || 0, 4, -378558);
+      d = hh(d, a, b, c, words[i + 8] || 0, 11, -2022574463);
+      c = hh(c, d, a, b, words[i + 11] || 0, 16, 1839030562);
+      b = hh(b, c, d, a, words[i + 14] || 0, 23, -35309556);
+      a = hh(a, b, c, d, words[i + 1] || 0, 4, -1530992060);
+      d = hh(d, a, b, c, words[i + 4] || 0, 11, 1272893353);
+      c = hh(c, d, a, b, words[i + 7] || 0, 16, -155497632);
+      b = hh(b, c, d, a, words[i + 10] || 0, 23, -1094730640);
+      a = hh(a, b, c, d, words[i + 13] || 0, 4, 681279174);
+      d = hh(d, a, b, c, words[i + 0] || 0, 11, -358537222);
+      c = hh(c, d, a, b, words[i + 3] || 0, 16, -722521979);
+      b = hh(b, c, d, a, words[i + 6] || 0, 23, 76029189);
+      a = hh(a, b, c, d, words[i + 9] || 0, 4, -640364487);
+      d = hh(d, a, b, c, words[i + 12] || 0, 11, -421815835);
+      c = hh(c, d, a, b, words[i + 15] || 0, 16, 530742520);
+      b = hh(b, c, d, a, words[i + 2] || 0, 23, -995338651);
+      a = ii(a, b, c, d, words[i + 0] || 0, 6, -198630844);
+      d = ii(d, a, b, c, words[i + 7] || 0, 10, 1126891415);
+      c = ii(c, d, a, b, words[i + 14] || 0, 15, -1416354905);
+      b = ii(b, c, d, a, words[i + 5] || 0, 21, -57434055);
+      a = ii(a, b, c, d, words[i + 12] || 0, 6, 1700485571);
+      d = ii(d, a, b, c, words[i + 3] || 0, 10, -1894986606);
+      c = ii(c, d, a, b, words[i + 10] || 0, 15, -1051523);
+      b = ii(b, c, d, a, words[i + 1] || 0, 21, -2054922799);
+      a = ii(a, b, c, d, words[i + 8] || 0, 6, 1873313359);
+      d = ii(d, a, b, c, words[i + 15] || 0, 10, -30611744);
+      c = ii(c, d, a, b, words[i + 6] || 0, 15, -1560198380);
+      b = ii(b, c, d, a, words[i + 13] || 0, 21, 1309151649);
+      a = ii(a, b, c, d, words[i + 4] || 0, 6, -145523070);
+      d = ii(d, a, b, c, words[i + 11] || 0, 10, -1120210379);
+      c = ii(c, d, a, b, words[i + 2] || 0, 15, 718787259);
+      b = ii(b, c, d, a, words[i + 9] || 0, 21, -343485551);
+      a = add32(a, oa);
+      b = add32(b, ob);
+      c = add32(c, oc);
+      d = add32(d, od);
+    }
+    return [a, b, c, d].map(hex).join("");
+  }
+  function cmn(q, a, b, x, s, t) {
+    return add32(rol(add32(add32(a, q), add32(x, t)), s), b);
+  }
+  function ff(a, b, c, d, x, s, t) {
+    return cmn(b & c | ~b & d, a, b, x, s, t);
+  }
+  function gg(a, b, c, d, x, s, t) {
+    return cmn(b & d | c & ~d, a, b, x, s, t);
+  }
+  function hh(a, b, c, d, x, s, t) {
+    return cmn(b ^ c ^ d, a, b, x, s, t);
+  }
+  function ii(a, b, c, d, x, s, t) {
+    return cmn(c ^ (b | ~d), a, b, x, s, t);
+  }
+  function rol(num, count) {
+    return num << count | num >>> 32 - count;
+  }
+  function add32(a, b) {
+    return a + b | 0;
+  }
+  function hex(num) {
+    let output = "";
+    for (let i = 0; i < 4; i += 1) {
+      output += (num >> i * 8 & 255).toString(16).padStart(2, "0");
+    }
+    return output;
   }
 })();
 //# sourceMappingURL=code.js.map
