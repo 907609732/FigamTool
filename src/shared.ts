@@ -99,7 +99,7 @@ export interface PluginConfig {
 
 export interface SelectionSummary {
   count: number;
-  roots: Array<{ id: string; name: string; type: string; childCount: number }>;
+  roots: Array<{ id: string; name: string; type: string; kind: NodeKind; childCount: number }>;
 }
 
 export type PluginToUiMessage =

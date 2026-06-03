@@ -158,6 +158,7 @@ async function getSelectionSummary(): Promise<SelectionSummary> {
     id: node.id,
     name: node.name,
     type: node.type,
+    kind: getNodeKind(node),
     childCount: "children" in node ? node.children.length : 0
   }));
   return { count: roots.length, roots };

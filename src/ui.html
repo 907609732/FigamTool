@@ -204,18 +204,27 @@
         if (!config.ueDefaults) config.ueDefaults = fallback.ueDefaults;
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
       }
-      function activeTerm() { return config.lexicon.find(function(entry) { return entry.id === activeTermId; }) || config.lexicon[0]; }
+      function selectedKind() { return selection.roots.length === 1 ? selection.roots[0].kind : ""; }
+      function visibleTerms() {
+        var kind = selectedKind();
+        if (!kind) return config.lexicon;
+        return config.lexicon.filter(function(entry) { return entry.kind === kind; });
+      }
+      function activeTerm() { return config.lexicon.find(function(entry) { return entry.id === activeTermId; }) || visibleTerms()[0] || config.lexicon[0]; }
       function renderSelection() {
         document.getElementById("selectionText").textContent = selection.count ? "已选中 " + selection.count + " 个节点" : "未选中节点";
-        var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
+        var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.kind + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
         document.getElementById("selectionPanel").innerHTML = html;
         document.getElementById("ueSelectionPanel").innerHTML = html;
       }
       function renderTerms() {
         normalizeConfig();
-        document.getElementById("termList").innerHTML = config.lexicon.map(function(entry) {
+        var terms = visibleTerms();
+        if (terms.length && !terms.some(function(entry) { return entry.id === activeTermId; })) activeTermId = terms[0].id;
+        if (!terms.length && config.lexicon.length) activeTermId = config.lexicon[0].id;
+        document.getElementById("termList").innerHTML = terms.length ? terms.map(function(entry) {
           return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + entry.kind + '</small><small>' + (entry.applyProperties ? "改名 + 属性" : "仅改名") + '</small></button>';
-        }).join("");
+        }).join("") : '<div class="empty">当前选中节点类型没有可用词条，请新增一个 ' + esc(selectedKind()) + ' 词条。</div>';
         document.querySelectorAll("[data-apply-term]").forEach(function(btn) {
           btn.onclick = function() {
             activeTermId = btn.dataset.applyTerm;
@@ -433,7 +442,7 @@
         var message = event.data.pluginMessage;
         if (!message) return;
         if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderAll(); }
-        if (message.type === "SELECTION") { selection = message.selection; renderSelection(); }
+        if (message.type === "SELECTION") { selection = message.selection; renderSelection(); renderTerms(); renderTermEditor(); }
         if (message.type === "APPLY_RESULT" || message.type === "UE_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);
         if (message.type === "CONFIG_EXPORTED") { setValue("ioBox", message.json); status("配置已导出到文本框"); }
         if (message.type === "ERROR") status("错误：" + message.message);
