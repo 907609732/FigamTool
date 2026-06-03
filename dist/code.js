@@ -132,7 +132,7 @@
   // src/code.ts
   var CONFIG_KEY = "ai-auto-namer-config";
   var PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
-  figma.showUI(__html__, { width: 460, height: 680, themeColors: true });
+  figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
   void initialize();
   figma.on("selectionchange", async () => {
     try {
@@ -145,6 +145,10 @@
     try {
       if (message.type === "SCAN_SELECTION") {
         post({ type: "SELECTION", selection: await getSelectionSummary() });
+        return;
+      }
+      if (message.type === "RESIZE_UI") {
+        figma.ui.resize(clamp(Math.round(message.width), 420, 900), clamp(Math.round(message.height), 520, 1e3));
         return;
       }
       if (message.type === "SAVE_CONFIG") {

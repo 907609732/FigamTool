@@ -8,16 +8,16 @@
       :root { color: var(--figma-color-text, #1f2328); background: var(--figma-color-bg, #fff); font: 12px Inter, system-ui, sans-serif; }
       * { box-sizing: border-box; }
       body { margin: 0; }
-      main { display: flex; min-height: 100vh; flex-direction: column; }
-      header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      main { display: flex; height: 100vh; min-height: 0; flex-direction: column; }
+      header { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
       h1, h2, h3, p { margin: 0; }
-      h1 { font-size: 16px; }
-      h2 { margin: 12px 0 8px; font-size: 12px; text-transform: uppercase; }
+      h1 { font-size: 13px; line-height: 16px; }
+      h2 { margin: 8px 0 6px; font-size: 11px; text-transform: uppercase; }
       h3 { font-size: 12px; }
       a { color: #0a66ff; text-decoration: none; }
       a:hover { text-decoration: underline; }
-      nav { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
-      section { display: none; flex: 1; overflow: auto; padding: 12px; }
+      nav { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      section { display: none; flex: 1; min-height: 0; overflow: auto; padding: 8px; }
       section.active { display: block; }
       button, input, select, textarea { width: 100%; min-height: 30px; border: 1px solid var(--figma-color-border, #d0d7de); border-radius: 6px; background: var(--figma-color-bg, #fff); color: inherit; font: inherit; }
       button { cursor: pointer; padding: 0 10px; }
@@ -28,21 +28,29 @@
       input, select, textarea { padding: 0 8px; }
       textarea { min-height: 108px; padding: 8px; resize: vertical; }
       label { display: grid; gap: 5px; min-width: 0; }
-      fieldset, .panel, .empty { border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 10px; margin: 10px 0; }
+      fieldset, .panel, .empty { border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 8px; margin: 8px 0; }
       legend { font-weight: 700; padding: 0 4px; }
       .brand { min-width: 0; }
+      .brand p { overflow: hidden; color: var(--figma-color-text-secondary, #666); text-overflow: ellipsis; white-space: nowrap; }
+      .top-actions { display: flex; gap: 6px; width: auto; }
+      .icon-btn, .tab { display: grid; width: 32px; min-width: 32px; height: 30px; place-items: center; padding: 0; font-weight: 700; }
+      .tab { color: var(--figma-color-text-secondary, #666); }
+      .tab.active { color: var(--figma-color-text, #1f2328); }
       .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
       .meta span, .meta a { white-space: nowrap; }
       .grid { display: grid; gap: 8px; }
+      .workbench { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(240px, 1.2fr); gap: 8px; align-items: start; }
+      .sticky-tools { position: sticky; top: 0; z-index: 1; display: grid; gap: 8px; background: var(--figma-color-bg, #fff); }
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
       .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+      .compact-actions { display: grid; grid-template-columns: repeat(3, 32px); gap: 6px; }
       .check { display: flex; align-items: center; gap: 8px; min-height: 30px; }
       .check input { width: 14px; min-height: 14px; }
       .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
       .selection-item span, footer, small { color: var(--figma-color-text-secondary, #666); }
-      .term-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .term-card { display: grid; gap: 4px; min-height: 58px; padding: 8px; text-align: left; }
+      .term-list { display: grid; gap: 6px; }
+      .term-card { display: grid; gap: 2px; min-height: 44px; padding: 7px 8px; text-align: left; }
       .term-card.active { border-color: #0a66ff; background: var(--figma-color-bg-hover, #f3f4f6); }
       .term-card strong, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -50,7 +58,11 @@
       .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .prop-line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
       .muted { color: var(--figma-color-text-secondary, #666); }
-      footer { min-height: 34px; padding: 9px 12px; border-top: 1px solid var(--figma-color-border, #ddd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .settings-card { display: grid; gap: 8px; }
+      footer { min-height: 32px; padding: 8px 28px 8px 10px; border-top: 1px solid var(--figma-color-border, #ddd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .resize-grip { position: fixed; right: 3px; bottom: 3px; width: 18px; height: 18px; cursor: nwse-resize; opacity: .7; }
+      .resize-grip::before { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid var(--figma-color-text-secondary, #777); border-bottom: 2px solid var(--figma-color-text-secondary, #777); }
+      @media (max-width: 500px) { .workbench { grid-template-columns: 1fr; } .prop-grid, .two { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -59,43 +71,46 @@
         <div class="brand">
           <h1>AI Auto Namer</h1>
           <p id="selectionText">未选中节点</p>
-          <div class="meta">
-            <span id="versionText">V__APP_VERSION__</span>
-            <span>By五成</span>
-            <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
-          </div>
         </div>
-        <button id="refreshBtn" title="刷新选区">Refresh</button>
+        <div class="top-actions">
+          <button id="refreshBtn" class="icon-btn" title="刷新选区">R</button>
+          <button id="settingsBtn" class="icon-btn" title="设置">S</button>
+        </div>
       </header>
       <nav>
-        <button class="tab active" data-tab="lexicon">词库命名/属性</button>
-        <button class="tab" data-tab="ue">UE画板</button>
-        <button class="tab" data-tab="ai">AI/导入导出</button>
+        <button class="tab active" data-tab="lexicon" title="词库命名/属性">N</button>
+        <button class="tab" data-tab="ue" title="UE画板">U</button>
+        <button class="tab" data-tab="ai" title="设置/导入导出">S</button>
       </nav>
 
       <section id="lexicon" class="active">
-        <div id="selectionPanel" class="panel"></div>
-        <fieldset>
-          <legend>应用范围</legend>
-          <div class="grid">
-            <label>范围<select id="scope"><option value="selection">仅选中节点</option><option value="children">直接子级</option><option value="deep">全部子节点</option></select></label>
-            <div class="two grid">
-              <label class="check"><input id="skipLocked" type="checkbox" checked>跳过 Locked</label>
-              <label class="check"><input id="skipHidden" type="checkbox" checked>跳过 Hidden</label>
+        <div class="workbench">
+          <div class="sticky-tools">
+            <div id="selectionPanel" class="panel"></div>
+            <fieldset>
+              <legend>范围</legend>
+              <div class="grid">
+                <label><select id="scope"><option value="selection">仅选中节点</option><option value="children">直接子级</option><option value="deep">全部子节点</option></select></label>
+                <div class="two grid">
+                  <label class="check"><input id="skipLocked" type="checkbox" checked>Locked</label>
+                  <label class="check"><input id="skipHidden" type="checkbox" checked>Hidden</label>
+                </div>
+              </div>
+            </fieldset>
+            <div class="compact-actions">
+              <button id="addTermBtn" class="icon-btn" title="新增词条">+</button>
+              <button id="duplicateTermBtn" class="icon-btn" title="复制词条">D</button>
+              <button id="deleteTermBtn" class="icon-btn danger" title="删除词条">-</button>
             </div>
+            <div id="termList" class="term-list"></div>
           </div>
-        </fieldset>
-        <h2>点击词条，直接改名并应用属性</h2>
-        <div id="termList" class="term-list"></div>
-        <div class="actions">
-          <button id="addTermBtn">新增词条</button>
-          <button id="duplicateTermBtn">复制词条</button>
-          <button id="deleteTermBtn" class="danger">删除词条</button>
+          <div class="grid">
+            <fieldset>
+              <legend>命名和属性</legend>
+              <div id="termEditor" class="grid"></div>
+            </fieldset>
+          </div>
         </div>
-        <fieldset>
-          <legend>当前词条配置</legend>
-          <div id="termEditor" class="grid"></div>
-        </fieldset>
       </section>
 
       <section id="ue">
@@ -112,6 +127,14 @@
       </section>
 
       <section id="ai">
+        <h2>软件信息</h2>
+        <div class="panel settings-card">
+          <div class="meta">
+            <span id="versionText">V__APP_VERSION__</span>
+            <span>By五成</span>
+            <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
+          </div>
+        </div>
         <h2>词库方案</h2>
         <div class="actions">
           <button id="exportCsvBtn">导出 Excel(CSV)</button>
@@ -137,6 +160,7 @@
       </section>
 
       <footer id="status">准备就绪</footer>
+      <div id="resizeGrip" class="resize-grip" title="拖拽调整窗口"></div>
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
@@ -183,6 +207,10 @@
       function renameOptions() { return { scope: value("scope"), skipLocked: checked("skipLocked"), skipHidden: checked("skipHidden"), keepOriginalSuffix: false, useAiNames: false, lexiconEntryId: activeTermId }; }
       function ueOptions() { return { mode: value("ueMode"), spacing: number("ueSpacing"), preserveSize: checked("uePreserveSize"), includeHidden: checked("ueIncludeHidden"), includeLocked: checked("ueIncludeLocked"), maxGridItemSize: number("ueMax") }; }
       function save() { post({ type: "SAVE_CONFIG", config: config }); }
+      function activateTab(tabId) {
+        document.querySelectorAll(".tab").forEach(function(b) { b.classList.toggle("active", b.dataset.tab === tabId); });
+        document.querySelectorAll("section").forEach(function(s) { s.classList.toggle("active", s.id === tabId); });
+      }
       function normalizeConfig() {
         var fallback = defaultConfig();
         if (!config.lexicon) config.lexicon = fallback.lexicon;
@@ -421,8 +449,9 @@
       function renderAll() { renderSelection(); renderTerms(); renderTermEditor(); renderAiAndUe(); }
       function esc(text) { return String(text).replace(/[&<>"']/g, function(ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]; }); }
 
-      document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { document.querySelectorAll(".tab").forEach(function(b) { b.classList.remove("active"); }); document.querySelectorAll("section").forEach(function(s) { s.classList.remove("active"); }); btn.classList.add("active"); document.getElementById(btn.dataset.tab).classList.add("active"); }; });
+      document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { activateTab(btn.dataset.tab); }; });
       document.getElementById("refreshBtn").onclick = function() { post({ type: "SCAN_SELECTION" }); };
+      document.getElementById("settingsBtn").onclick = function() { activateTab("ai"); };
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = deleteTerm;
@@ -437,6 +466,14 @@
       document.getElementById("kimiPresetBtn").onclick = function() { applyAiPreset("kimi"); };
       document.getElementById("saveAiBtn").onclick = syncAi;
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
+      document.getElementById("resizeGrip").onmousedown = function(event) {
+        event.preventDefault();
+        var startX = event.clientX, startY = event.clientY, startW = window.innerWidth, startH = window.innerHeight;
+        document.onmousemove = function(move) {
+          post({ type: "RESIZE_UI", width: startW + move.clientX - startX, height: startH + move.clientY - startY });
+        };
+        document.onmouseup = function() { document.onmousemove = null; document.onmouseup = null; };
+      };
 
       window.onmessage = function(event) {
         var message = event.data.pluginMessage;

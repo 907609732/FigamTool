@@ -123,7 +123,8 @@ export type UiToPluginMessage =
   | { type: "IMPORT_CONFIG"; json: string }
   | { type: "EXPORT_CONFIG" }
   | { type: "WRITE_PROJECT_CONFIG"; config: PluginConfig }
-  | { type: "GENERATE_AI_NAMES"; options: RenameOptions; config: PluginConfig };
+  | { type: "GENERATE_AI_NAMES"; options: RenameOptions; config: PluginConfig }
+  | { type: "RESIZE_UI"; width: number; height: number };
 
 export const defaultConfig: PluginConfig = {
   namingRules: [
