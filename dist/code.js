@@ -31,17 +31,47 @@
       { id: "node", label: "Node \u5176\u4ED6", kind: "NODE", prefix: "Node", digits: 3 }
     ],
     lexicon: [
-      { id: "lex-text", label: "Text \u6587\u672C", kind: "TEXT", prefix: "Txt", description: "\u6240\u6709\u6587\u5B57\u5C42" },
-      { id: "lex-title", label: "Title \u6807\u9898", kind: "TEXT", prefix: "Title", description: "\u6807\u9898\u6587\u5B57" },
-      { id: "lex-label", label: "Label \u6807\u7B7E", kind: "TEXT", prefix: "Label", description: "\u8BF4\u660E/\u6807\u7B7E\u6587\u5B57" },
-      { id: "lex-image", label: "Image \u56FE\u7247", kind: "IMAGE", prefix: "Img", description: "\u56FE\u7247\u8D44\u6E90" },
-      { id: "lex-icon", label: "Icon \u56FE\u6807", kind: "IMAGE", prefix: "Icon", description: "\u5C0F\u56FE\u6807/\u88C5\u9970\u56FE" },
-      { id: "lex-button", label: "Button \u6309\u94AE", kind: "COMPONENT", prefix: "Btn", description: "\u6309\u94AE\u7EC4\u4EF6\u6216\u6309\u94AE\u7EC4" },
-      { id: "lex-panel", label: "Panel \u9762\u677F", kind: "FRAME", prefix: "Panel", description: "\u5F39\u7A97/\u9762\u677F\u5BB9\u5668" },
-      { id: "lex-group", label: "Group \u7EC4", kind: "FRAME", prefix: "Group", description: "\u666E\u901A\u5206\u7EC4\u5BB9\u5668" },
-      { id: "lex-shape", label: "Shape \u56FE\u5F62", kind: "SHAPE", prefix: "Shape", description: "\u57FA\u7840\u5F62\u72B6" },
-      { id: "lex-bg", label: "Background \u80CC\u666F", kind: "SHAPE", prefix: "Bg", description: "\u80CC\u666F\u5757/\u5E95\u56FE" },
-      { id: "lex-node", label: "Node \u901A\u7528", kind: "NODE", prefix: "Node", description: "\u65E0\u6CD5\u8BC6\u522B\u7684\u8282\u70B9" }
+      {
+        id: "lex-text",
+        word: "Txt",
+        label: "Text \u6587\u672C",
+        kind: "TEXT",
+        prefix: "Txt",
+        description: "\u666E\u901A\u6587\u5B57\u5C42",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-title",
+        word: "Title",
+        label: "Title \u6807\u9898",
+        kind: "TEXT",
+        prefix: "Title",
+        description: "\u6807\u9898\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 32, lineHeightPx: 38, textFill: "#FFFFFF" }
+      },
+      {
+        id: "lex-label",
+        word: "Label",
+        label: "Label \u6807\u7B7E",
+        kind: "TEXT",
+        prefix: "Label",
+        description: "\u8BF4\u660E/\u6807\u7B7E\u6587\u5B57",
+        applyProperties: true,
+        enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
+        values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 18, lineHeightPx: 22, textFill: "#FFFFFF" }
+      },
+      { id: "lex-image", word: "Img", label: "Image \u56FE\u7247", kind: "IMAGE", prefix: "Img", description: "\u56FE\u7247\u8D44\u6E90", applyProperties: false },
+      { id: "lex-icon", word: "Icon", label: "Icon \u56FE\u6807", kind: "IMAGE", prefix: "Icon", description: "\u5C0F\u56FE\u6807/\u88C5\u9970\u56FE", applyProperties: false },
+      { id: "lex-button", word: "Btn", label: "Button \u6309\u94AE", kind: "COMPONENT", prefix: "Btn", description: "\u6309\u94AE\u7EC4\u4EF6\u6216\u6309\u94AE\u7EC4", applyProperties: false },
+      { id: "lex-panel", word: "Panel", label: "Panel \u9762\u677F", kind: "FRAME", prefix: "Panel", description: "\u5F39\u7A97/\u9762\u677F\u5BB9\u5668", applyProperties: false },
+      { id: "lex-group", word: "Group", label: "Group \u7EC4", kind: "FRAME", prefix: "Group", description: "\u666E\u901A\u5206\u7EC4\u5BB9\u5668", applyProperties: false },
+      { id: "lex-shape", word: "Shape", label: "Shape \u56FE\u5F62", kind: "SHAPE", prefix: "Shape", description: "\u57FA\u7840\u5F62\u72B6", applyProperties: false },
+      { id: "lex-bg", word: "Bg", label: "Background \u80CC\u666F", kind: "SHAPE", prefix: "Bg", description: "\u80CC\u666F\u5757/\u5E95\u56FE", applyProperties: false },
+      { id: "lex-node", word: "Node", label: "Node \u901A\u7528", kind: "NODE", prefix: "Node", description: "\u65E0\u6CD5\u8BC6\u522B\u7684\u8282\u70B9", applyProperties: false }
     ],
     propertyPresets: [
       {
@@ -155,6 +185,12 @@
         figma.notify(`\u5DF2\u5904\u7406 ${changed} \u4E2A\u8282\u70B9\u5C5E\u6027`);
         return;
       }
+      if (message.type === "APPLY_LEXICON_ENTRY") {
+        const result = await applyLexiconEntry(message.entryId, message.options, message.config);
+        post({ type: "APPLY_RESULT", message: `\u5DF2\u5E94\u7528\u8BCD\u6761\uFF1A\u91CD\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u5C5E\u6027 ${result.properties} \u4E2A` });
+        figma.notify(`\u5DF2\u5E94\u7528\u8BCD\u6761\uFF1A${result.word}`);
+        return;
+      }
       if (message.type === "CREATE_UE_FRAME") {
         const created = await createUeFrame(message.options, message.config);
         post({ type: "UE_RESULT", message: `\u5DF2\u751F\u6210 ${created.name}\uFF0C\u5305\u542B ${created.count} \u4E2A\u8282\u70B9` });
@@ -186,11 +222,30 @@
     const aiSettings = (_b = partial.aiSettings) != null ? _b : {};
     return {
       namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
-      lexicon: Array.isArray(partial.lexicon) ? partial.lexicon : defaultConfig.lexicon,
+      lexicon: normalizeLexicon(partial.lexicon),
       propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
       ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
       aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings)
     };
+  }
+  function normalizeLexicon(input) {
+    const source = Array.isArray(input) ? input : defaultConfig.lexicon;
+    return source.map((entry, index) => {
+      var _a, _b;
+      const partial = entry;
+      const fallback = (_a = defaultConfig.lexicon[index]) != null ? _a : defaultConfig.lexicon[defaultConfig.lexicon.length - 1];
+      return {
+        id: partial.id || `lex-${index + 1}`,
+        word: partial.word || partial.prefix || partial.label || fallback.word,
+        label: partial.label || partial.word || partial.prefix || fallback.label,
+        kind: partial.kind || fallback.kind,
+        prefix: partial.prefix || partial.word || fallback.prefix,
+        description: partial.description || "",
+        applyProperties: (_b = partial.applyProperties) != null ? _b : false,
+        enabled: partial.enabled || {},
+        values: partial.values || {}
+      };
+    });
   }
   async function ensureCurrentPageLoaded() {
     await figma.currentPage.loadAsync();
@@ -292,6 +347,39 @@
       if (didChange) changed += 1;
     }
     return changed;
+  }
+  async function applyLexiconEntry(entryId, options, config) {
+    const normalized = normalizeConfig(config);
+    const entry = normalized.lexicon.find((item) => item.id === entryId);
+    if (!entry) throw new Error("\u627E\u4E0D\u5230\u8FD9\u4E2A\u8BCD\u5E93\u8BCD\u6761");
+    const targets = await collectTargets(options);
+    if (!targets.length) throw new Error("\u6CA1\u6709\u53EF\u5904\u7406\u7684\u9009\u4E2D\u8282\u70B9");
+    const baseName = safeName(entry.word || entry.prefix || entry.label);
+    let renamed = 0;
+    let properties = 0;
+    const preset = lexiconEntryToPreset(entry);
+    for (let index = 0; index < targets.length; index += 1) {
+      const node = targets[index];
+      node.name = targets.length > 1 ? `${baseName}_${String(index + 1).padStart(2, "0")}` : baseName;
+      renamed += 1;
+      if (entry.applyProperties && preset) {
+        const didChange = await applyPresetToNode(node, preset);
+        if (didChange) properties += 1;
+      }
+    }
+    return { renamed, properties, word: baseName };
+  }
+  function lexiconEntryToPreset(entry) {
+    var _a, _b;
+    if (!entry.applyProperties) return null;
+    const values = Object.assign({}, defaultConfig.propertyPresets[0].values, (_a = entry.values) != null ? _a : {});
+    return {
+      id: `${entry.id}-preset`,
+      name: entry.label || entry.word,
+      targetKinds: [entry.kind],
+      enabled: (_b = entry.enabled) != null ? _b : {},
+      values
+    };
   }
   async function applyPresetToNode(node, preset) {
     const { enabled, values } = preset;

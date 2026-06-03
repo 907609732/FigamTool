@@ -1,6 +1,7 @@
 import {
   defaultConfig,
   type AiSettings,
+  type LexiconEntry,
   type NodeKind,
   type PluginConfig,
   type PluginToUiMessage,
@@ -79,6 +80,13 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       return;
     }
 
+    if (message.type === "APPLY_LEXICON_ENTRY") {
+      const result = await applyLexiconEntry(message.entryId, message.options, message.config);
+      post({ type: "APPLY_RESULT", message: `已应用词条：重命名 ${result.renamed} 个，属性 ${result.properties} 个` });
+      figma.notify(`已应用词条：${result.word}`);
+      return;
+    }
+
     if (message.type === "CREATE_UE_FRAME") {
       const created = await createUeFrame(message.options, message.config);
       post({ type: "UE_RESULT", message: `已生成 ${created.name}，包含 ${created.count} 个节点` });
@@ -114,11 +122,30 @@ function normalizeConfig(input: unknown): PluginConfig {
   const aiSettings = partial.aiSettings ?? {};
   return {
     namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
-    lexicon: Array.isArray(partial.lexicon) ? partial.lexicon : defaultConfig.lexicon,
+    lexicon: normalizeLexicon(partial.lexicon),
     propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
     ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
     aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings)
   };
+}
+
+function normalizeLexicon(input: unknown): LexiconEntry[] {
+  const source = Array.isArray(input) ? input : defaultConfig.lexicon;
+  return source.map((entry, index) => {
+    const partial = entry as Partial<LexiconEntry>;
+    const fallback = defaultConfig.lexicon[index] ?? defaultConfig.lexicon[defaultConfig.lexicon.length - 1];
+    return {
+      id: partial.id || `lex-${index + 1}`,
+      word: partial.word || partial.prefix || partial.label || fallback.word,
+      label: partial.label || partial.word || partial.prefix || fallback.label,
+      kind: partial.kind || fallback.kind,
+      prefix: partial.prefix || partial.word || fallback.prefix,
+      description: partial.description || "",
+      applyProperties: partial.applyProperties ?? false,
+      enabled: partial.enabled || {},
+      values: partial.values || {}
+    };
+  });
 }
 
 async function ensureCurrentPageLoaded() {
@@ -230,6 +257,45 @@ async function applyProperties(preset: PropertyPreset, options: RenameOptions): 
     if (didChange) changed += 1;
   }
   return changed;
+}
+
+async function applyLexiconEntry(
+  entryId: string,
+  options: RenameOptions,
+  config: PluginConfig
+): Promise<{ renamed: number; properties: number; word: string }> {
+  const normalized = normalizeConfig(config);
+  const entry = normalized.lexicon.find((item) => item.id === entryId);
+  if (!entry) throw new Error("找不到这个词库词条");
+  const targets = await collectTargets(options);
+  if (!targets.length) throw new Error("没有可处理的选中节点");
+
+  const baseName = safeName(entry.word || entry.prefix || entry.label);
+  let renamed = 0;
+  let properties = 0;
+  const preset = lexiconEntryToPreset(entry);
+  for (let index = 0; index < targets.length; index += 1) {
+    const node = targets[index];
+    node.name = targets.length > 1 ? `${baseName}_${String(index + 1).padStart(2, "0")}` : baseName;
+    renamed += 1;
+    if (entry.applyProperties && preset) {
+      const didChange = await applyPresetToNode(node, preset);
+      if (didChange) properties += 1;
+    }
+  }
+  return { renamed, properties, word: baseName };
+}
+
+function lexiconEntryToPreset(entry: LexiconEntry): PropertyPreset | null {
+  if (!entry.applyProperties) return null;
+  const values = Object.assign({}, defaultConfig.propertyPresets[0].values, entry.values ?? {});
+  return {
+    id: `${entry.id}-preset`,
+    name: entry.label || entry.word,
+    targetKinds: [entry.kind],
+    enabled: entry.enabled ?? {},
+    values
+  };
 }
 
 async function applyPresetToNode(node: SceneNode, preset: PropertyPreset): Promise<boolean> {

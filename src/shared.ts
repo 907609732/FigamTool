@@ -79,10 +79,14 @@ export interface AiSettings {
 
 export interface LexiconEntry {
   id: string;
+  word: string;
   label: string;
   kind: NodeKind;
   prefix: string;
   description: string;
+  applyProperties?: boolean;
+  enabled?: Record<string, boolean>;
+  values?: Partial<PropertyValues>;
 }
 
 export interface PluginConfig {
@@ -113,6 +117,7 @@ export type UiToPluginMessage =
   | { type: "PREVIEW_RENAME"; options: RenameOptions; config: PluginConfig }
   | { type: "APPLY_RENAME"; items: RenamePreviewItem[] }
   | { type: "APPLY_PROPERTIES"; preset: PropertyPreset; options: RenameOptions }
+  | { type: "APPLY_LEXICON_ENTRY"; entryId: string; options: RenameOptions; config: PluginConfig }
   | { type: "CREATE_UE_FRAME"; options: UeLayoutOptions; config: PluginConfig }
   | { type: "SAVE_CONFIG"; config: PluginConfig }
   | { type: "IMPORT_CONFIG"; json: string }
@@ -130,17 +135,47 @@ export const defaultConfig: PluginConfig = {
     { id: "node", label: "Node 其他", kind: "NODE", prefix: "Node", digits: 3 }
   ],
   lexicon: [
-    { id: "lex-text", label: "Text 文本", kind: "TEXT", prefix: "Txt", description: "所有文字层" },
-    { id: "lex-title", label: "Title 标题", kind: "TEXT", prefix: "Title", description: "标题文字" },
-    { id: "lex-label", label: "Label 标签", kind: "TEXT", prefix: "Label", description: "说明/标签文字" },
-    { id: "lex-image", label: "Image 图片", kind: "IMAGE", prefix: "Img", description: "图片资源" },
-    { id: "lex-icon", label: "Icon 图标", kind: "IMAGE", prefix: "Icon", description: "小图标/装饰图" },
-    { id: "lex-button", label: "Button 按钮", kind: "COMPONENT", prefix: "Btn", description: "按钮组件或按钮组" },
-    { id: "lex-panel", label: "Panel 面板", kind: "FRAME", prefix: "Panel", description: "弹窗/面板容器" },
-    { id: "lex-group", label: "Group 组", kind: "FRAME", prefix: "Group", description: "普通分组容器" },
-    { id: "lex-shape", label: "Shape 图形", kind: "SHAPE", prefix: "Shape", description: "基础形状" },
-    { id: "lex-bg", label: "Background 背景", kind: "SHAPE", prefix: "Bg", description: "背景块/底图" },
-    { id: "lex-node", label: "Node 通用", kind: "NODE", prefix: "Node", description: "无法识别的节点" }
+    {
+      id: "lex-text",
+      word: "Txt",
+      label: "Text 文本",
+      kind: "TEXT",
+      prefix: "Txt",
+      description: "普通文字层",
+      applyProperties: true,
+      enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
+      values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, textFill: "#FFFFFF" }
+    },
+    {
+      id: "lex-title",
+      word: "Title",
+      label: "Title 标题",
+      kind: "TEXT",
+      prefix: "Title",
+      description: "标题文字",
+      applyProperties: true,
+      enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
+      values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 32, lineHeightPx: 38, textFill: "#FFFFFF" }
+    },
+    {
+      id: "lex-label",
+      word: "Label",
+      label: "Label 标签",
+      kind: "TEXT",
+      prefix: "Label",
+      description: "说明/标签文字",
+      applyProperties: true,
+      enabled: { fontFamily: true, fontStyle: true, fontSize: true, lineHeightPx: true, textFill: true },
+      values: { fontFamily: "Inter", fontStyle: "Regular", fontSize: 18, lineHeightPx: 22, textFill: "#FFFFFF" }
+    },
+    { id: "lex-image", word: "Img", label: "Image 图片", kind: "IMAGE", prefix: "Img", description: "图片资源", applyProperties: false },
+    { id: "lex-icon", word: "Icon", label: "Icon 图标", kind: "IMAGE", prefix: "Icon", description: "小图标/装饰图", applyProperties: false },
+    { id: "lex-button", word: "Btn", label: "Button 按钮", kind: "COMPONENT", prefix: "Btn", description: "按钮组件或按钮组", applyProperties: false },
+    { id: "lex-panel", word: "Panel", label: "Panel 面板", kind: "FRAME", prefix: "Panel", description: "弹窗/面板容器", applyProperties: false },
+    { id: "lex-group", word: "Group", label: "Group 组", kind: "FRAME", prefix: "Group", description: "普通分组容器", applyProperties: false },
+    { id: "lex-shape", word: "Shape", label: "Shape 图形", kind: "SHAPE", prefix: "Shape", description: "基础形状", applyProperties: false },
+    { id: "lex-bg", word: "Bg", label: "Background 背景", kind: "SHAPE", prefix: "Bg", description: "背景块/底图", applyProperties: false },
+    { id: "lex-node", word: "Node", label: "Node 通用", kind: "NODE", prefix: "Node", description: "无法识别的节点", applyProperties: false }
   ],
   propertyPresets: [
     {

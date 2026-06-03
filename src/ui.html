@@ -10,24 +10,29 @@
       body { margin: 0; }
       main { display: flex; min-height: 100vh; flex-direction: column; }
       header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
-      h1, h2, p { margin: 0; }
+      h1, h2, h3, p { margin: 0; }
       h1 { font-size: 16px; }
       h2 { margin: 12px 0 8px; font-size: 12px; text-transform: uppercase; }
+      h3 { font-size: 12px; }
       a { color: #0a66ff; text-decoration: none; }
       a:hover { text-decoration: underline; }
-      nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      nav { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
       section { display: none; flex: 1; overflow: auto; padding: 12px; }
       section.active { display: block; }
       button, input, select, textarea { width: 100%; min-height: 30px; border: 1px solid var(--figma-color-border, #d0d7de); border-radius: 6px; background: var(--figma-color-bg, #fff); color: inherit; font: inherit; }
       button { cursor: pointer; padding: 0 10px; }
       button.active { background: var(--figma-color-bg-hover, #f3f4f6); }
       button.primary { border-color: #0a66ff; background: #0a66ff; color: white; }
+      button.danger { color: #c93c37; }
       button:disabled { opacity: .55; cursor: not-allowed; }
       input, select, textarea { padding: 0 8px; }
       textarea { min-height: 108px; padding: 8px; resize: vertical; }
-      label { display: grid; gap: 5px; }
+      label { display: grid; gap: 5px; min-width: 0; }
       fieldset, .panel, .empty { border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 10px; margin: 10px 0; }
       legend { font-weight: 700; padding: 0 4px; }
+      .brand { min-width: 0; }
+      .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
+      .meta span, .meta a { white-space: nowrap; }
       .grid { display: grid; gap: 8px; }
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
@@ -36,13 +41,15 @@
       .check input { width: 14px; min-height: 14px; }
       .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
       .selection-item span, footer, small { color: var(--figma-color-text-secondary, #666); }
-      .brand { min-width: 0; }
-      .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
-      .meta span, .meta a { white-space: nowrap; }
-      .row { display: grid; grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1.2fr); gap: 6px; align-items: center; margin-bottom: 6px; }
-      .row small, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .rule { display: grid; grid-template-columns: 1fr 96px 64px; gap: 8px; align-items: end; margin-bottom: 8px; }
-      .lex { display: grid; grid-template-columns: 96px 1fr 82px 28px; gap: 6px; align-items: end; margin-bottom: 8px; }
+      .term-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .term-card { display: grid; gap: 4px; min-height: 58px; padding: 8px; text-align: left; }
+      .term-card.active { border-color: #0a66ff; background: var(--figma-color-bg-hover, #f3f4f6); }
+      .term-card strong, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .compact-row { display: grid; grid-template-columns: 84px 1fr 28px; gap: 6px; align-items: end; margin-bottom: 8px; }
+      .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .prop-line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
+      .muted { color: var(--figma-color-text-secondary, #666); }
       footer { min-height: 34px; padding: 9px 12px; border-top: 1px solid var(--figma-color-border, #ddd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     </style>
   </head>
@@ -61,43 +68,36 @@
         <button id="refreshBtn" title="刷新选区">Refresh</button>
       </header>
       <nav>
-        <button class="tab active" data-tab="naming">命名</button>
-        <button class="tab" data-tab="properties">属性</button>
+        <button class="tab active" data-tab="lexicon">词库命名/属性</button>
         <button class="tab" data-tab="ue">UE画板</button>
-        <button class="tab" data-tab="presets">词库/AI</button>
+        <button class="tab" data-tab="ai">AI/导入导出</button>
       </nav>
-      <section id="naming" class="active">
+
+      <section id="lexicon" class="active">
         <div id="selectionPanel" class="panel"></div>
-        <div class="grid">
-          <label>范围 Scope<select id="scope"><option value="deep">全部子节点</option><option value="children">直接子级</option><option value="selection">仅选中节点</option></select></label>
-          <label>本地词库推荐<select id="lexiconSelect"></select></label>
-          <label class="check"><input id="skipLocked" type="checkbox" checked>跳过 Locked</label>
-          <label class="check"><input id="skipHidden" type="checkbox" checked>跳过 Hidden</label>
-          <label class="check"><input id="keepOriginalSuffix" type="checkbox">保留原名后缀</label>
-        </div>
+        <fieldset>
+          <legend>应用范围</legend>
+          <div class="grid">
+            <label>范围<select id="scope"><option value="selection">仅选中节点</option><option value="children">直接子级</option><option value="deep">全部子节点</option></select></label>
+            <div class="two grid">
+              <label class="check"><input id="skipLocked" type="checkbox" checked>跳过 Locked</label>
+              <label class="check"><input id="skipHidden" type="checkbox" checked>跳过 Hidden</label>
+            </div>
+          </div>
+        </fieldset>
+        <h2>点击词条，直接改名并应用属性</h2>
+        <div id="termList" class="term-list"></div>
         <div class="actions">
-          <button id="previewBtn">规则预览</button>
-          <button id="aiBtn">AI 建议</button>
-          <button id="applyRenameBtn" class="primary" disabled>应用命名</button>
+          <button id="addTermBtn">新增词条</button>
+          <button id="duplicateTermBtn">复制词条</button>
+          <button id="deleteTermBtn" class="danger">删除词条</button>
         </div>
-        <div id="preview" class="grid empty">还没有预览结果。</div>
-      </section>
-      <section id="properties">
-        <label>属性组合<select id="presetSelect"></select></label>
         <fieldset>
-          <legend>Target</legend>
-          <div id="targetKinds" class="grid two"></div>
+          <legend>当前词条配置</legend>
+          <div id="termEditor" class="grid"></div>
         </fieldset>
-        <fieldset>
-          <legend>Common / Text</legend>
-          <label class="check"><input class="propEnable" data-key="opacity" type="checkbox">opacity</label><input id="opacity" type="number" min="0" max="1" step=".1">
-          <label class="check"><input class="propEnable" data-key="fontSize" type="checkbox">fontSize</label><input id="fontSize" type="number">
-          <label class="check"><input class="propEnable" data-key="lineHeightPx" type="checkbox">lineHeight</label><input id="lineHeightPx" type="number">
-          <label class="check"><input class="propEnable" data-key="letterSpacing" type="checkbox">letterSpacing</label><input id="letterSpacing" type="number">
-          <label class="check"><input class="propEnable" data-key="textAlignHorizontal" type="checkbox">align center</label>
-        </fieldset>
-        <button id="applyPropsBtn" class="primary">应用属性</button>
       </section>
+
       <section id="ue">
         <div id="ueSelectionPanel" class="panel"></div>
         <div class="grid">
@@ -110,11 +110,21 @@
         </div>
         <div class="actions"><button id="createUeBtn" class="primary">生成 UE 画板</button></div>
       </section>
-      <section id="presets">
-        <h2>命名词库</h2><div id="rules"></div>
-        <h2>本地词条推荐</h2>
-        <div id="lexiconList"></div>
-        <button id="addLexiconBtn">新增词条</button>
+
+      <section id="ai">
+        <h2>词库方案</h2>
+        <div class="actions">
+          <button id="exportCsvBtn">导出 Excel(CSV)</button>
+          <button id="importCsvBtn">导入 CSV</button>
+          <button id="exportJsonBtn">导出 JSON</button>
+        </div>
+        <textarea id="ioBox" placeholder="这里会显示导出的 JSON/CSV；导入 CSV 时，把 Excel/WPS 另存为 CSV 后粘贴到这里。"></textarea>
+        <div class="actions">
+          <button id="importJsonBtn">导入 JSON</button>
+          <button id="writeProjectBtn">写入项目配置</button>
+          <button id="resetBtn" class="danger">恢复默认词库</button>
+        </div>
+
         <h2>AI 设置</h2>
         <div class="grid">
           <label class="check"><input id="aiEnabled" type="checkbox">启用 AI</label>
@@ -124,17 +134,17 @@
           <label>API Key<input id="aiKey" type="password"></label>
           <label>Prompt Template<textarea id="aiPrompt"></textarea></label>
         </div>
-        <h2>配置共享</h2>
-        <div class="actions"><button id="exportBtn">导出 JSON</button><button id="importBtn">导入 JSON</button><button id="writeProjectBtn">写入项目配置</button></div>
-        <textarea id="jsonBox" placeholder="导入/导出的 JSON 配置"></textarea>
       </section>
+
       <footer id="status">准备就绪</footer>
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
+      var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
       var config = null;
       var selection = { count: 0, roots: [] };
-      var previewItems = [];
+      var activeTermId = "";
+
       function defaultConfig() {
         return {
           namingRules: [
@@ -146,81 +156,157 @@
             { id: "node", label: "Node 其他", kind: "NODE", prefix: "Node", digits: 3 }
           ],
           lexicon: [
-            { id: "lex-text", label: "Text 文本", kind: "TEXT", prefix: "Txt", description: "所有文字层" },
-            { id: "lex-title", label: "Title 标题", kind: "TEXT", prefix: "Title", description: "标题文字" },
-            { id: "lex-label", label: "Label 标签", kind: "TEXT", prefix: "Label", description: "说明/标签文字" },
-            { id: "lex-image", label: "Image 图片", kind: "IMAGE", prefix: "Img", description: "图片资源" },
-            { id: "lex-icon", label: "Icon 图标", kind: "IMAGE", prefix: "Icon", description: "小图标/装饰图" },
-            { id: "lex-button", label: "Button 按钮", kind: "COMPONENT", prefix: "Btn", description: "按钮组件或按钮组" },
-            { id: "lex-panel", label: "Panel 面板", kind: "FRAME", prefix: "Panel", description: "弹窗/面板容器" },
-            { id: "lex-group", label: "Group 组", kind: "FRAME", prefix: "Group", description: "普通分组容器" },
-            { id: "lex-shape", label: "Shape 图形", kind: "SHAPE", prefix: "Shape", description: "基础形状" },
-            { id: "lex-bg", label: "Background 背景", kind: "SHAPE", prefix: "Bg", description: "背景块/底图" },
-            { id: "lex-node", label: "Node 通用", kind: "NODE", prefix: "Node", description: "无法识别的节点" }
+            term("lex-text", "Txt", "Text 文本", "TEXT", "普通文字层", true, 24, 28),
+            term("lex-title", "Title", "Title 标题", "TEXT", "标题文字", true, 32, 38),
+            term("lex-label", "Label", "Label 标签", "TEXT", "说明/标签文字", true, 18, 22),
+            term("lex-image", "Img", "Image 图片", "IMAGE", "图片资源", false, 24, 28),
+            term("lex-icon", "Icon", "Icon 图标", "IMAGE", "小图标/装饰图", false, 24, 28),
+            term("lex-button", "Btn", "Button 按钮", "COMPONENT", "按钮组件或按钮组", false, 24, 28),
+            term("lex-panel", "Panel", "Panel 面板", "FRAME", "弹窗/面板容器", false, 24, 28),
+            term("lex-bg", "Bg", "Background 背景", "SHAPE", "背景块/底图", false, 24, 28)
           ],
-          propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPx: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", fontFamily: "Inter", fontStyle: "Regular", fontSize: 24, lineHeightPx: 28, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 } }],
+          propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPx: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
           ueDefaults: { mode: "preserve", spacing: 24, preserveSize: true, includeHidden: false, includeLocked: false, maxGridItemSize: 160 },
           aiSettings: { enabled: false, provider: "openai-compatible", baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." }
         };
       }
+      function term(id, word, label, kind, description, applyProperties, fontSize, lineHeightPx) {
+        return { id: id, word: word, label: label, kind: kind, prefix: word, description: description, applyProperties: applyProperties, enabled: { fontFamily: applyProperties, fontStyle: applyProperties, fontSize: applyProperties, lineHeightPx: applyProperties, textFill: applyProperties }, values: Object.assign({}, defaultValues, { fontSize: fontSize, lineHeightPx: lineHeightPx }) };
+      }
       function post(message) { parent.postMessage({ pluginMessage: message }, "*"); }
       function status(text) { document.getElementById("status").textContent = text; }
-      function normalizeConfig() { if (!config.lexicon) config.lexicon = defaultConfig().lexicon; if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible"; }
-      function renameOptions() { return { scope: value("scope"), skipLocked: checked("skipLocked"), skipHidden: checked("skipHidden"), keepOriginalSuffix: checked("keepOriginalSuffix"), useAiNames: false, lexiconEntryId: value("lexiconSelect") }; }
-      function ueOptions() { return { mode: value("ueMode"), spacing: number("ueSpacing"), preserveSize: checked("uePreserveSize"), includeHidden: checked("ueIncludeHidden"), includeLocked: checked("ueIncludeLocked"), maxGridItemSize: number("ueMax") }; }
       function checked(id) { return document.getElementById(id).checked; }
       function value(id) { return document.getElementById(id).value; }
       function number(id) { return Number(value(id)); }
       function setChecked(id, next) { document.getElementById(id).checked = !!next; }
-      function setValue(id, next) { document.getElementById(id).value = next; }
-      function currentPreset() { return config.propertyPresets.find(function(p) { return p.id === value("presetSelect"); }) || config.propertyPresets[0]; }
+      function setValue(id, next) { document.getElementById(id).value = next == null ? "" : next; }
+      function renameOptions() { return { scope: value("scope"), skipLocked: checked("skipLocked"), skipHidden: checked("skipHidden"), keepOriginalSuffix: false, useAiNames: false, lexiconEntryId: activeTermId }; }
+      function ueOptions() { return { mode: value("ueMode"), spacing: number("ueSpacing"), preserveSize: checked("uePreserveSize"), includeHidden: checked("ueIncludeHidden"), includeLocked: checked("ueIncludeLocked"), maxGridItemSize: number("ueMax") }; }
       function save() { post({ type: "SAVE_CONFIG", config: config }); }
+      function normalizeConfig() {
+        var fallback = defaultConfig();
+        if (!config.lexicon) config.lexicon = fallback.lexicon;
+        config.lexicon = config.lexicon.map(function(entry, index) {
+          var oldWord = entry.word || entry.prefix || entry.label || "Node";
+          entry.id = entry.id || "lex-" + index;
+          entry.word = oldWord;
+          entry.label = entry.label || oldWord;
+          entry.kind = entry.kind || "NODE";
+          entry.prefix = entry.prefix || oldWord;
+          entry.description = entry.description || "";
+          entry.applyProperties = !!entry.applyProperties;
+          entry.enabled = entry.enabled || {};
+          entry.values = Object.assign({}, defaultValues, entry.values || {});
+          return entry;
+        });
+        if (!config.aiSettings) config.aiSettings = fallback.aiSettings;
+        if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible";
+        if (!config.ueDefaults) config.ueDefaults = fallback.ueDefaults;
+        if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
+      }
+      function activeTerm() { return config.lexicon.find(function(entry) { return entry.id === activeTermId; }) || config.lexicon[0]; }
       function renderSelection() {
         document.getElementById("selectionText").textContent = selection.count ? "已选中 " + selection.count + " 个节点" : "未选中节点";
-        var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择节点或画板后刷新。</p>";
+        var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
         document.getElementById("selectionPanel").innerHTML = html;
         document.getElementById("ueSelectionPanel").innerHTML = html;
       }
-      function renderRules() {
+      function renderTerms() {
         normalizeConfig();
-        document.getElementById("rules").innerHTML = config.namingRules.map(function(rule) {
-          return '<div class="rule"><span>' + esc(rule.label) + '</span><input data-rule-prefix="' + rule.id + '" value="' + esc(rule.prefix) + '"><input type="number" min="1" max="6" data-rule-digits="' + rule.id + '" value="' + rule.digits + '"></div>';
+        document.getElementById("termList").innerHTML = config.lexicon.map(function(entry) {
+          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + entry.kind + '</small><small>' + (entry.applyProperties ? "改名 + 属性" : "仅改名") + '</small></button>';
         }).join("");
-        document.querySelectorAll("[data-rule-prefix]").forEach(function(input) { input.oninput = function() { updateRule(input.dataset.rulePrefix, "prefix", input.value); }; });
-        document.querySelectorAll("[data-rule-digits]").forEach(function(input) { input.oninput = function() { updateRule(input.dataset.ruleDigits, "digits", Number(input.value)); }; });
-        renderLexiconSelect();
-        renderLexiconList();
-      }
-      function renderLexiconSelect() {
-        var select = document.getElementById("lexiconSelect");
-        var options = ['<option value="">不用词库，仅按类型前缀</option>', '<option value="__auto_lexicon__">按节点类型自动推荐</option>'];
-        config.lexicon.forEach(function(entry) {
-          options.push('<option value="' + entry.id + '">' + esc(entry.label) + ' · ' + entry.kind + ' · ' + esc(entry.prefix) + '</option>');
+        document.querySelectorAll("[data-apply-term]").forEach(function(btn) {
+          btn.onclick = function() {
+            activeTermId = btn.dataset.applyTerm;
+            renderTerms();
+            renderTermEditor();
+            post({ type: "APPLY_LEXICON_ENTRY", entryId: activeTermId, options: renameOptions(), config: config });
+          };
         });
-        select.innerHTML = options.join("");
       }
-      function renderLexiconList() {
-        document.getElementById("lexiconList").innerHTML = config.lexicon.map(function(entry) {
-          return '<div class="lex"><select data-lex-kind="' + entry.id + '">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + ">" + kind + "</option>"; }).join("") + '</select><input data-lex-label="' + entry.id + '" value="' + esc(entry.label) + '"><input data-lex-prefix="' + entry.id + '" value="' + esc(entry.prefix) + '"><button data-lex-remove="' + entry.id + '">×</button></div>';
-        }).join("");
-        document.querySelectorAll("[data-lex-kind]").forEach(function(input) { input.onchange = function() { updateLexicon(input.dataset.lexKind, "kind", input.value); }; });
-        document.querySelectorAll("[data-lex-label]").forEach(function(input) { input.oninput = function() { updateLexicon(input.dataset.lexLabel, "label", input.value); }; });
-        document.querySelectorAll("[data-lex-prefix]").forEach(function(input) { input.oninput = function() { updateLexicon(input.dataset.lexPrefix, "prefix", input.value); }; });
-        document.querySelectorAll("[data-lex-remove]").forEach(function(btn) { btn.onclick = function() { config.lexicon = config.lexicon.filter(function(entry) { return entry.id !== btn.dataset.lexRemove; }); save(); renderRules(); }; });
+      function renderTermEditor() {
+        var entry = activeTerm();
+        if (!entry) { document.getElementById("termEditor").innerHTML = '<p class="muted">暂无词条。</p>'; return; }
+        var v = Object.assign({}, defaultValues, entry.values || {});
+        var enabled = entry.enabled || {};
+        document.getElementById("termEditor").innerHTML =
+          '<div class="two grid">' +
+            '<label>词条单词/节点名<input id="termWord" value="' + esc(entry.word) + '"></label>' +
+            '<label>显示名称<input id="termLabel" value="' + esc(entry.label) + '"></label>' +
+            '<label>节点类型<select id="termKind">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + '>' + kind + '</option>'; }).join("") + '</select></label>' +
+            '<label>说明<input id="termDescription" value="' + esc(entry.description) + '"></label>' +
+          '</div>' +
+          '<label class="check"><input id="termApplyProperties" type="checkbox" ' + (entry.applyProperties ? "checked" : "") + '>点击词条时同时应用属性</label>' +
+          '<div class="prop-grid">' +
+            prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
+            prop("fontStyle", "字重", "text", v.fontStyle, enabled.fontStyle) +
+            prop("fontSize", "字号", "number", v.fontSize, enabled.fontSize) +
+            prop("lineHeightPx", "行高", "number", v.lineHeightPx, enabled.lineHeightPx) +
+            prop("letterSpacing", "字距", "number", v.letterSpacing, enabled.letterSpacing) +
+            prop("textFill", "颜色", "text", v.textFill, enabled.textFill) +
+            prop("opacity", "透明度", "number", v.opacity, enabled.opacity) +
+            prop("cornerRadius", "圆角", "number", v.cornerRadius, enabled.cornerRadius) +
+          '</div>';
+        ["termWord","termLabel","termKind","termDescription","termApplyProperties"].forEach(function(id) {
+          document.getElementById(id).onchange = syncTermEditor;
+          document.getElementById(id).oninput = syncTermEditor;
+        });
+        document.querySelectorAll("[data-prop-key]").forEach(function(input) { input.onchange = syncTermEditor; input.oninput = syncTermEditor; });
+        document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncTermEditor; });
       }
-      function renderPreset() {
-        var select = document.getElementById("presetSelect");
-        select.innerHTML = config.propertyPresets.map(function(p) { return '<option value="' + p.id + '">' + esc(p.name) + '</option>'; }).join("");
-        var preset = currentPreset();
-        document.getElementById("targetKinds").innerHTML = nodeKinds.map(function(kind) {
-          return '<label class="check"><input data-target-kind="' + kind + '" type="checkbox" ' + (preset.targetKinds.indexOf(kind) >= 0 ? "checked" : "") + ">" + kind + "</label>";
-        }).join("");
-        ["opacity","fontSize","lineHeightPx","letterSpacing"].forEach(function(key) { setValue(key, preset.values[key]); });
-        document.querySelectorAll(".propEnable").forEach(function(input) { input.checked = !!preset.enabled[input.dataset.key]; });
-        document.querySelectorAll("[data-target-kind]").forEach(function(input) { input.onchange = function() { var kind = input.dataset.targetKind; preset.targetKinds = input.checked ? preset.targetKinds.concat([kind]) : preset.targetKinds.filter(function(k) { return k !== kind; }); save(); }; });
+      function prop(key, label, type, value, enabled) {
+        return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
       }
-      function renderAi() {
-        normalizeConfig();
+      function syncTermEditor() {
+        var entry = activeTerm();
+        if (!entry) return;
+        entry.word = value("termWord");
+        entry.prefix = entry.word;
+        entry.label = value("termLabel");
+        entry.kind = value("termKind");
+        entry.description = value("termDescription");
+        entry.applyProperties = checked("termApplyProperties");
+        entry.enabled = entry.enabled || {};
+        entry.values = Object.assign({}, defaultValues, entry.values || {});
+        document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { entry.enabled[input.dataset.propEnabled] = input.checked; });
+        document.querySelectorAll("[data-prop-key]").forEach(function(input) {
+          var key = input.dataset.propKey;
+          entry.values[key] = input.type === "number" ? Number(input.value) : input.value;
+        });
+        save();
+        renderTerms();
+      }
+      function addTerm() {
+        var next = term("lex-" + Date.now(), "NewName", "NewName", "TEXT", "", true, 24, 28);
+        config.lexicon.push(next);
+        activeTermId = next.id;
+        save();
+        renderTerms();
+        renderTermEditor();
+      }
+      function duplicateTerm() {
+        var entry = activeTerm();
+        if (!entry) return;
+        var copy = JSON.parse(JSON.stringify(entry));
+        copy.id = "lex-" + Date.now();
+        copy.word = copy.word + "Copy";
+        copy.label = copy.label + " Copy";
+        config.lexicon.push(copy);
+        activeTermId = copy.id;
+        save();
+        renderTerms();
+        renderTermEditor();
+      }
+      function deleteTerm() {
+        if (config.lexicon.length <= 1) { status("至少保留一个词条"); return; }
+        config.lexicon = config.lexicon.filter(function(entry) { return entry.id !== activeTermId; });
+        activeTermId = config.lexicon[0].id;
+        save();
+        renderTerms();
+        renderTermEditor();
+      }
+      function renderAiAndUe() {
         setChecked("aiEnabled", config.aiSettings.enabled);
         setValue("aiBaseUrl", config.aiSettings.baseUrl);
         setValue("aiModel", config.aiSettings.model);
@@ -233,18 +319,6 @@
         setChecked("ueIncludeHidden", config.ueDefaults.includeHidden);
         setChecked("ueIncludeLocked", config.ueDefaults.includeLocked);
       }
-      function renderPreview() {
-        var box = document.getElementById("preview");
-        if (!previewItems.length) { box.className = "grid empty"; box.textContent = "还没有预览结果。"; document.getElementById("applyRenameBtn").disabled = true; return; }
-        box.className = "grid";
-        box.innerHTML = previewItems.map(function(item, index) {
-          return '<div class="row"><span>' + item.kind + '</span><small title="' + esc(item.currentName) + '">' + esc(item.currentName) + '</small><input data-preview-index="' + index + '" value="' + esc(item.nextName) + '"></div>';
-        }).join("");
-        document.querySelectorAll("[data-preview-index]").forEach(function(input) { input.oninput = function() { previewItems[Number(input.dataset.previewIndex)].nextName = input.value; }; });
-        document.getElementById("applyRenameBtn").disabled = false;
-      }
-      function updateRule(id, key, next) { config.namingRules.forEach(function(rule) { if (rule.id === id) rule[key] = next; }); save(); }
-      function updateLexicon(id, key, next) { config.lexicon.forEach(function(entry) { if (entry.id === id) entry[key] = next; }); save(); renderLexiconSelect(); }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.apiKey = value("aiKey"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
       function applyAiPreset(provider) {
         config.aiSettings.provider = provider;
@@ -256,48 +330,117 @@
           config.aiSettings.baseUrl = "https://api.openai.com/v1/chat/completions";
           config.aiSettings.model = "gpt-4.1-mini";
         }
-        renderAi();
+        renderAiAndUe();
         save();
         status(provider === "kimi" ? "已切换到 Kimi API 配置" : "已切换到 OpenAI 兼容配置");
       }
-      function syncPreset() {
-        var preset = currentPreset();
-        ["opacity","fontSize","lineHeightPx","letterSpacing"].forEach(function(key) { preset.values[key] = number(key); });
-        preset.values.textAlignHorizontal = "CENTER"; preset.values.textAlignVertical = "CENTER";
-        document.querySelectorAll(".propEnable").forEach(function(input) { preset.enabled[input.dataset.key] = input.checked; });
-        if (preset.enabled.textAlignHorizontal) preset.enabled.textAlignVertical = true;
-        save();
-        return preset;
+      function exportCsv() {
+        var rows = [["word","label","kind","description","applyProperties","fontFamily","fontStyle","fontSize","lineHeightPx","letterSpacing","textFill","opacity","cornerRadius"]];
+        config.lexicon.forEach(function(entry) {
+          var v = Object.assign({}, defaultValues, entry.values || {});
+          rows.push([entry.word, entry.label, entry.kind, entry.description, entry.applyProperties ? "TRUE" : "FALSE", v.fontFamily, v.fontStyle, v.fontSize, v.lineHeightPx, v.letterSpacing, v.textFill, v.opacity, v.cornerRadius]);
+        });
+        var csv = rows.map(function(row) { return row.map(csvCell).join(","); }).join("\n");
+        setValue("ioBox", csv);
+        download("figmatool-lexicon.csv", csv, "text/csv");
+        status("已导出 CSV，可用 Excel/WPS 打开");
       }
+      function importCsv() {
+        var text = value("ioBox").trim();
+        if (!text) { status("请先粘贴 CSV 内容"); return; }
+        var rows = parseCsv(text);
+        var header = rows.shift() || [];
+        var index = {};
+        header.forEach(function(name, i) { index[name] = i; });
+        config.lexicon = rows.filter(function(row) { return row[index.word] || row[0]; }).map(function(row, i) {
+          var word = row[index.word] || row[0] || "Node";
+          var apply = String(row[index.applyProperties] || "").toUpperCase() === "TRUE";
+          return { id: "lex-" + Date.now() + "-" + i, word: word, label: row[index.label] || word, kind: row[index.kind] || "TEXT", prefix: word, description: row[index.description] || "", applyProperties: apply, enabled: { fontFamily: apply, fontStyle: apply, fontSize: apply, lineHeightPx: apply, letterSpacing: apply, textFill: apply, opacity: apply, cornerRadius: apply }, values: Object.assign({}, defaultValues, { fontFamily: row[index.fontFamily] || "Inter", fontStyle: row[index.fontStyle] || "Regular", fontSize: Number(row[index.fontSize] || 24), lineHeightPx: Number(row[index.lineHeightPx] || 28), letterSpacing: Number(row[index.letterSpacing] || 0), textFill: row[index.textFill] || "#FFFFFF", opacity: Number(row[index.opacity] || 1), cornerRadius: Number(row[index.cornerRadius] || 0) }) };
+        });
+        activeTermId = config.lexicon[0] ? config.lexicon[0].id : "";
+        save();
+        renderTerms();
+        renderTermEditor();
+        status("CSV 词库已导入");
+      }
+      function exportJson() {
+        var json = JSON.stringify(config, null, 2);
+        setValue("ioBox", json);
+        download("figmatool-config.json", json, "application/json");
+        status("配置 JSON 已导出");
+      }
+      function importJson() {
+        try {
+          config = JSON.parse(value("ioBox"));
+          normalizeConfig();
+          activeTermId = config.lexicon[0] ? config.lexicon[0].id : "";
+          save();
+          renderAll();
+          status("JSON 配置已导入");
+        } catch (error) {
+          status("JSON 导入失败：" + error.message);
+        }
+      }
+      function csvCell(value) {
+        var text = String(value == null ? "" : value);
+        return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+      }
+      function parseCsv(text) {
+        var rows = [], row = [], cell = "", quoted = false;
+        for (var i = 0; i < text.length; i += 1) {
+          var ch = text[i], next = text[i + 1];
+          if (quoted && ch === '"' && next === '"') { cell += '"'; i += 1; continue; }
+          if (ch === '"') { quoted = !quoted; continue; }
+          if (!quoted && ch === ",") { row.push(cell); cell = ""; continue; }
+          if (!quoted && (ch === "\n" || ch === "\r")) {
+            if (ch === "\r" && next === "\n") i += 1;
+            row.push(cell); rows.push(row); row = []; cell = ""; continue;
+          }
+          cell += ch;
+        }
+        row.push(cell); rows.push(row);
+        return rows.filter(function(r) { return r.some(function(c) { return c.trim(); }); });
+      }
+      function download(filename, content, type) {
+        var blob = new Blob(["\ufeff" + content], { type: type + ";charset=utf-8" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+      }
+      function renderAll() { renderSelection(); renderTerms(); renderTermEditor(); renderAiAndUe(); }
       function esc(text) { return String(text).replace(/[&<>"']/g, function(ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]; }); }
+
       document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { document.querySelectorAll(".tab").forEach(function(b) { b.classList.remove("active"); }); document.querySelectorAll("section").forEach(function(s) { s.classList.remove("active"); }); btn.classList.add("active"); document.getElementById(btn.dataset.tab).classList.add("active"); }; });
       document.getElementById("refreshBtn").onclick = function() { post({ type: "SCAN_SELECTION" }); };
-      document.getElementById("previewBtn").onclick = function() { post({ type: "PREVIEW_RENAME", options: renameOptions(), config: config }); };
-      document.getElementById("aiBtn").onclick = function() { post({ type: "GENERATE_AI_NAMES", options: renameOptions(), config: config }); };
-      document.getElementById("applyRenameBtn").onclick = function() { post({ type: "APPLY_RENAME", items: previewItems }); };
-      document.getElementById("applyPropsBtn").onclick = function() { post({ type: "APPLY_PROPERTIES", preset: syncPreset(), options: renameOptions() }); };
+      document.getElementById("addTermBtn").onclick = addTerm;
+      document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
+      document.getElementById("deleteTermBtn").onclick = deleteTerm;
       document.getElementById("createUeBtn").onclick = function() { config.ueDefaults = ueOptions(); save(); post({ type: "CREATE_UE_FRAME", options: config.ueDefaults, config: config }); };
-      document.getElementById("exportBtn").onclick = function() { post({ type: "EXPORT_CONFIG" }); };
-      document.getElementById("importBtn").onclick = function() { post({ type: "IMPORT_CONFIG", json: value("jsonBox") }); };
+      document.getElementById("exportCsvBtn").onclick = exportCsv;
+      document.getElementById("importCsvBtn").onclick = importCsv;
+      document.getElementById("exportJsonBtn").onclick = exportJson;
+      document.getElementById("importJsonBtn").onclick = importJson;
       document.getElementById("writeProjectBtn").onclick = function() { post({ type: "WRITE_PROJECT_CONFIG", config: config }); };
-      document.getElementById("addLexiconBtn").onclick = function() { config.lexicon.push({ id: "lex-" + Date.now(), label: "New Term", kind: "NODE", prefix: "New", description: "" }); save(); renderRules(); };
+      document.getElementById("resetBtn").onclick = function() { config.lexicon = defaultConfig().lexicon; activeTermId = config.lexicon[0].id; save(); renderTerms(); renderTermEditor(); status("已恢复默认词库"); };
       document.getElementById("openAiPresetBtn").onclick = function() { applyAiPreset("openai-compatible"); };
       document.getElementById("kimiPresetBtn").onclick = function() { applyAiPreset("kimi"); };
       document.getElementById("saveAiBtn").onclick = syncAi;
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
-      document.getElementById("presetSelect").onchange = renderPreset;
+
       window.onmessage = function(event) {
         var message = event.data.pluginMessage;
         if (!message) return;
-        if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderSelection(); renderRules(); renderPreset(); renderAi(); }
+        if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderAll(); }
         if (message.type === "SELECTION") { selection = message.selection; renderSelection(); }
-        if (message.type === "RENAME_PREVIEW") { previewItems = message.items; renderPreview(); status((message.aiUsed ? "AI" : "规则") + "预览 " + message.items.length + " 个节点"); }
         if (message.type === "APPLY_RESULT" || message.type === "UE_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);
-        if (message.type === "CONFIG_EXPORTED") { setValue("jsonBox", message.json); status("配置已导出到文本框"); }
+        if (message.type === "CONFIG_EXPORTED") { setValue("ioBox", message.json); status("配置已导出到文本框"); }
         if (message.type === "ERROR") status("错误：" + message.message);
       };
       config = defaultConfig();
-      renderSelection(); renderRules(); renderPreset(); renderAi();
+      normalizeConfig();
+      renderAll();
       post({ type: "SCAN_SELECTION" });
     </script>
   </body>
