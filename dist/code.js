@@ -303,6 +303,15 @@
         figma.notify(`\u5DF2\u7FFB\u8BD1\u547D\u540D\uFF1A${result.name}`);
         return;
       }
+      if (message.type === "AUTO_NAME_FRAME") {
+        const result = await autoNameFrame(message.config);
+        post({
+          type: "APPLY_RESULT",
+          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u89E3\u6563 Group ${result.groups} \u4E2A\uFF0C\u5220\u9664 Mask ${result.masks} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
+        });
+        figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.renamed} \u4E2A\u8282\u70B9`);
+        return;
+      }
       if (message.type === "CREATE_UE_FRAME") {
         const created = await createUeFrame(message.options, message.config);
         post({ type: "UE_RESULT", message: `\u5DF2\u751F\u6210 ${created.name}\uFF0C\u5305\u542B ${created.count} \u4E2A\u8282\u70B9` });
@@ -506,7 +515,161 @@
     }
     return { renamed, name: baseName };
   }
+  async function autoNameFrame(config) {
+    var _a, _b, _c, _d;
+    await ensureCurrentPageLoaded();
+    const selection = Array.from(figma.currentPage.selection);
+    if (selection.length !== 1 || selection[0].type !== "FRAME") {
+      throw new Error("\u8BF7\u53EA\u9009\u4E2D\u4E00\u4E2A\u9700\u8981\u6574\u7406\u7684\u4E00\u952E\u547D\u540D\u753B\u677F\uFF08Frame\uFF09");
+    }
+    const root = selection[0];
+    const normalized = normalizeConfig(config);
+    const ruleByKind = new Map(normalized.namingRules.map((rule) => [rule.kind, rule.prefix]));
+    const candidates = collectAutoNameCandidates(root);
+    const sources = candidates.map((candidate) => candidate.source);
+    const translations = await translateSources(sources, normalized.translateSettings);
+    const cleanup = cleanGroupsAndMasks(root);
+    const counters = /* @__PURE__ */ new Map();
+    let renamed = 0;
+    let skipped = cleanup.skipped;
+    for (const candidate of candidates) {
+      try {
+        if (candidate.node.removed) {
+          skipped += 1;
+          continue;
+        }
+        const prefix = (_b = (_a = ruleByKind.get(candidate.kind)) != null ? _a : ruleByKind.get("NODE")) != null ? _b : "Node";
+        const translated = (_c = translations.get(candidate.source)) != null ? _c : candidate.source;
+        const body = stripNamingPrefix(toNodeName(translated), prefix);
+        const baseName = `${prefix}${body || candidate.kind.charAt(0) + candidate.kind.slice(1).toLowerCase()}`;
+        const next = ((_d = counters.get(baseName)) != null ? _d : 0) + 1;
+        counters.set(baseName, next);
+        candidate.node.name = next > 1 ? `${baseName}_${String(next).padStart(2, "0")}` : baseName;
+        renamed += 1;
+      } catch (e) {
+        skipped += 1;
+      }
+    }
+    figma.currentPage.selection = [root];
+    return { renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+  }
+  function collectAutoNameCandidates(root) {
+    const candidates = [];
+    const visit = (container) => {
+      for (const node of container.children) {
+        if (isMaskNode(node)) continue;
+        if (node.type === "GROUP") {
+          visit(node);
+          continue;
+        }
+        const kind = getNodeKind(node);
+        candidates.push({ node, kind, source: getAutoNameSource(node, kind) });
+        if ("children" in node) visit(node);
+      }
+    };
+    visit(root);
+    return candidates;
+  }
+  function getAutoNameSource(node, kind) {
+    const raw = node.type === "TEXT" && node.characters.trim() ? node.characters.trim().replace(/\s+/g, " ").slice(0, 80) : node.name.trim();
+    const fallback = kind.charAt(0) + kind.slice(1).toLowerCase();
+    return raw || fallback;
+  }
+  function cleanGroupsAndMasks(root) {
+    let groups = 0;
+    let masks = 0;
+    let skipped = 0;
+    const visit = (container) => {
+      for (const node of Array.from(container.children)) {
+        if (isMaskNode(node)) {
+          try {
+            node.remove();
+            masks += 1;
+          } catch (e) {
+            skipped += 1;
+          }
+          continue;
+        }
+        if (node.type === "GROUP") {
+          visit(node);
+          try {
+            const parent = node.parent;
+            if (!parent || !("insertChild" in parent) || !("children" in parent)) throw new Error("Group \u65E0\u6CD5\u89E3\u6563");
+            let index = parent.children.indexOf(node);
+            for (const child of Array.from(node.children)) {
+              const transform = child.relativeTransform;
+              parent.insertChild(index, child);
+              child.relativeTransform = transform;
+              index += 1;
+            }
+            if (!node.removed) node.remove();
+            groups += 1;
+          } catch (e) {
+            skipped += 1;
+          }
+          continue;
+        }
+        if ("children" in node) visit(node);
+      }
+    };
+    visit(root);
+    return { groups, masks, skipped };
+  }
+  function isMaskNode(node) {
+    return "isMask" in node && node.isMask;
+  }
+  async function translateSources(sources, settings) {
+    const unique = Array.from(new Set(sources));
+    const translated = new Map(unique.map((source) => [source, source]));
+    const chinese = unique.filter(containsChinese);
+    if (!chinese.length) return translated;
+    if (!settings.appId || !settings.secretKey) throw new Error("\u753B\u677F\u4E2D\u6709\u4E2D\u6587\u540D\u79F0\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u586B\u5199\u767E\u5EA6\u7FFB\u8BD1 AppID \u548C\u5BC6\u94A5");
+    for (const batch of translationBatches(chinese)) {
+      const results = await requestBaiduTranslationResults(batch.join("\n"), settings);
+      if (results.length === batch.length) {
+        batch.forEach((source, index) => translated.set(source, results[index] || source));
+        continue;
+      }
+      const split = results.length === 1 ? results[0].split(/\r?\n/) : [];
+      if (split.length === batch.length) {
+        batch.forEach((source, index) => translated.set(source, split[index] || source));
+        continue;
+      }
+      for (const source of batch) {
+        const single = await requestBaiduTranslationResults(source, settings);
+        translated.set(source, single.join(" ") || source);
+      }
+    }
+    return translated;
+  }
+  function translationBatches(sources) {
+    const batches = [];
+    let batch = [];
+    let size = 0;
+    for (const source of sources) {
+      const nextSize = encodeURIComponent(source).length + 3;
+      if (batch.length && (batch.length >= 30 || size + nextSize > 4e3)) {
+        batches.push(batch);
+        batch = [];
+        size = 0;
+      }
+      batch.push(source);
+      size += nextSize;
+    }
+    if (batch.length) batches.push(batch);
+    return batches;
+  }
+  function containsChinese(value) {
+    return /[\u3400-\u9fff]/.test(value);
+  }
+  function stripNamingPrefix(value, prefix) {
+    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return value.replace(new RegExp(`^${escaped}[_\\s-]*`, "i"), "");
+  }
   async function requestBaiduTranslation(text, settings) {
+    return (await requestBaiduTranslationResults(text, settings)).join(" ");
+  }
+  async function requestBaiduTranslationResults(text, settings) {
     if (!text) throw new Error("\u8BF7\u8F93\u5165\u8981\u7FFB\u8BD1\u7684\u4E2D\u6587");
     if (!settings.appId || !settings.secretKey) throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u586B\u5199\u767E\u5EA6\u7FFB\u8BD1 AppID \u548C\u5BC6\u94A5");
     const salt = String(Date.now());
@@ -523,8 +686,8 @@
     if (!response.ok) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
     const payload = await response.json();
     if (payload == null ? void 0 : payload.error_code) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF1A${payload.error_code} ${payload.error_msg || ""}`.trim());
-    const translated = Array.isArray(payload == null ? void 0 : payload.trans_result) ? payload.trans_result.map((item) => item.dst || "").join(" ") : "";
-    if (!translated.trim()) throw new Error("\u767E\u5EA6\u7FFB\u8BD1\u6CA1\u6709\u8FD4\u56DE\u6709\u6548\u7ED3\u679C");
+    const translated = Array.isArray(payload == null ? void 0 : payload.trans_result) ? payload.trans_result.map((item) => item.dst || "") : [];
+    if (!translated.length || !translated.some((item) => item.trim())) throw new Error("\u767E\u5EA6\u7FFB\u8BD1\u6CA1\u6709\u8FD4\u56DE\u6709\u6548\u7ED3\u679C");
     return translated;
   }
   function lexiconEntryToPreset(entry) {

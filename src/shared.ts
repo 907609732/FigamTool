@@ -135,6 +135,7 @@ export type UiToPluginMessage =
   | { type: "WRITE_PROJECT_CONFIG"; config: PluginConfig }
   | { type: "GENERATE_AI_NAMES"; options: RenameOptions; config: PluginConfig }
   | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig }
+  | { type: "AUTO_NAME_FRAME"; config: PluginConfig }
   | { type: "RESIZE_UI"; width: number; height: number };
 
 export const defaultConfig: PluginConfig = {

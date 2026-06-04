@@ -100,6 +100,16 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       return;
     }
 
+    if (message.type === "AUTO_NAME_FRAME") {
+      const result = await autoNameFrame(message.config);
+      post({
+        type: "APPLY_RESULT",
+        message: `一键命名完成：命名 ${result.renamed} 个，解散 Group ${result.groups} 个，删除 Mask ${result.masks} 个，跳过 ${result.skipped} 个`
+      });
+      figma.notify(`一键命名完成：${result.renamed} 个节点`);
+      return;
+    }
+
     if (message.type === "CREATE_UE_FRAME") {
       const created = await createUeFrame(message.options, message.config);
       post({ type: "UE_RESULT", message: `已生成 ${created.name}，包含 ${created.count} 个节点` });
@@ -329,7 +339,183 @@ async function translateAndRename(
   return { renamed, name: baseName };
 }
 
+async function autoNameFrame(
+  config: PluginConfig
+): Promise<{ renamed: number; groups: number; masks: number; skipped: number }> {
+  await ensureCurrentPageLoaded();
+  const selection = Array.from(figma.currentPage.selection);
+  if (selection.length !== 1 || selection[0].type !== "FRAME") {
+    throw new Error("请只选中一个需要整理的一键命名画板（Frame）");
+  }
+
+  const root = selection[0];
+  const normalized = normalizeConfig(config);
+  const ruleByKind = new Map(normalized.namingRules.map((rule) => [rule.kind, rule.prefix]));
+  const candidates = collectAutoNameCandidates(root);
+  const sources = candidates.map((candidate) => candidate.source);
+  const translations = await translateSources(sources, normalized.translateSettings);
+  const cleanup = cleanGroupsAndMasks(root);
+  const counters = new Map<string, number>();
+  let renamed = 0;
+  let skipped = cleanup.skipped;
+
+  for (const candidate of candidates) {
+    try {
+      if (candidate.node.removed) {
+        skipped += 1;
+        continue;
+      }
+      const prefix = ruleByKind.get(candidate.kind) ?? ruleByKind.get("NODE") ?? "Node";
+      const translated = translations.get(candidate.source) ?? candidate.source;
+      const body = stripNamingPrefix(toNodeName(translated), prefix);
+      const baseName = `${prefix}${body || candidate.kind.charAt(0) + candidate.kind.slice(1).toLowerCase()}`;
+      const next = (counters.get(baseName) ?? 0) + 1;
+      counters.set(baseName, next);
+      candidate.node.name = next > 1 ? `${baseName}_${String(next).padStart(2, "0")}` : baseName;
+      renamed += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
+
+  figma.currentPage.selection = [root];
+  return { renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+}
+
+function collectAutoNameCandidates(root: SceneNode & ChildrenMixin): Array<{ node: SceneNode; kind: NodeKind; source: string }> {
+  const candidates: Array<{ node: SceneNode; kind: NodeKind; source: string }> = [];
+  const visit = (container: SceneNode & ChildrenMixin) => {
+    for (const node of container.children) {
+      if (isMaskNode(node)) continue;
+      if (node.type === "GROUP") {
+        visit(node);
+        continue;
+      }
+      const kind = getNodeKind(node);
+      candidates.push({ node, kind, source: getAutoNameSource(node, kind) });
+      if ("children" in node) visit(node);
+    }
+  };
+  visit(root);
+  return candidates;
+}
+
+function getAutoNameSource(node: SceneNode, kind: NodeKind): string {
+  const raw =
+    node.type === "TEXT" && node.characters.trim()
+      ? node.characters.trim().replace(/\s+/g, " ").slice(0, 80)
+      : node.name.trim();
+  const fallback = kind.charAt(0) + kind.slice(1).toLowerCase();
+  return raw || fallback;
+}
+
+function cleanGroupsAndMasks(root: SceneNode & ChildrenMixin): { groups: number; masks: number; skipped: number } {
+  let groups = 0;
+  let masks = 0;
+  let skipped = 0;
+
+  const visit = (container: SceneNode & ChildrenMixin) => {
+    for (const node of Array.from(container.children)) {
+      if (isMaskNode(node)) {
+        try {
+          node.remove();
+          masks += 1;
+        } catch {
+          skipped += 1;
+        }
+        continue;
+      }
+
+      if (node.type === "GROUP") {
+        visit(node);
+        try {
+          const parent = node.parent;
+          if (!parent || !("insertChild" in parent) || !("children" in parent)) throw new Error("Group 无法解散");
+          let index = parent.children.indexOf(node);
+          for (const child of Array.from(node.children)) {
+            const transform = child.relativeTransform;
+            parent.insertChild(index, child);
+            child.relativeTransform = transform;
+            index += 1;
+          }
+          if (!node.removed) node.remove();
+          groups += 1;
+        } catch {
+          skipped += 1;
+        }
+        continue;
+      }
+
+      if ("children" in node) visit(node);
+    }
+  };
+
+  visit(root);
+  return { groups, masks, skipped };
+}
+
+function isMaskNode(node: SceneNode): boolean {
+  return "isMask" in node && node.isMask;
+}
+
+async function translateSources(sources: string[], settings: TranslateSettings): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(sources));
+  const translated = new Map(unique.map((source) => [source, source]));
+  const chinese = unique.filter(containsChinese);
+  if (!chinese.length) return translated;
+  if (!settings.appId || !settings.secretKey) throw new Error("画板中有中文名称，请先在设置里填写百度翻译 AppID 和密钥");
+
+  for (const batch of translationBatches(chinese)) {
+    const results = await requestBaiduTranslationResults(batch.join("\n"), settings);
+    if (results.length === batch.length) {
+      batch.forEach((source, index) => translated.set(source, results[index] || source));
+      continue;
+    }
+    const split = results.length === 1 ? results[0].split(/\r?\n/) : [];
+    if (split.length === batch.length) {
+      batch.forEach((source, index) => translated.set(source, split[index] || source));
+      continue;
+    }
+    for (const source of batch) {
+      const single = await requestBaiduTranslationResults(source, settings);
+      translated.set(source, single.join(" ") || source);
+    }
+  }
+  return translated;
+}
+
+function translationBatches(sources: string[]): string[][] {
+  const batches: string[][] = [];
+  let batch: string[] = [];
+  let size = 0;
+  for (const source of sources) {
+    const nextSize = encodeURIComponent(source).length + 3;
+    if (batch.length && (batch.length >= 30 || size + nextSize > 4000)) {
+      batches.push(batch);
+      batch = [];
+      size = 0;
+    }
+    batch.push(source);
+    size += nextSize;
+  }
+  if (batch.length) batches.push(batch);
+  return batches;
+}
+
+function containsChinese(value: string): boolean {
+  return /[\u3400-\u9fff]/.test(value);
+}
+
+function stripNamingPrefix(value: string, prefix: string): string {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(new RegExp(`^${escaped}[_\\s-]*`, "i"), "");
+}
+
 async function requestBaiduTranslation(text: string, settings: TranslateSettings): Promise<string> {
+  return (await requestBaiduTranslationResults(text, settings)).join(" ");
+}
+
+async function requestBaiduTranslationResults(text: string, settings: TranslateSettings): Promise<string[]> {
   if (!text) throw new Error("请输入要翻译的中文");
   if (!settings.appId || !settings.secretKey) throw new Error("请先在设置里填写百度翻译 AppID 和密钥");
   const salt = String(Date.now());
@@ -346,10 +532,10 @@ async function requestBaiduTranslation(text: string, settings: TranslateSettings
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);
   const payload = await response.json();
   if (payload?.error_code) throw new Error(`百度翻译失败：${payload.error_code} ${payload.error_msg || ""}`.trim());
-  const translated = Array.isArray(payload?.trans_result)
-    ? payload.trans_result.map((item: { dst?: string }) => item.dst || "").join(" ")
-    : "";
-  if (!translated.trim()) throw new Error("百度翻译没有返回有效结果");
+  const translated: string[] = Array.isArray(payload?.trans_result)
+    ? payload.trans_result.map((item: { dst?: string }) => item.dst || "")
+    : [];
+  if (!translated.length || !translated.some((item) => item.trim())) throw new Error("百度翻译没有返回有效结果");
   return translated;
 }
 
