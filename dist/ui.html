@@ -9,14 +9,13 @@
       * { box-sizing: border-box; }
       body { margin: 0; }
       main { display: flex; height: 100vh; min-height: 0; flex-direction: column; }
-      header { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
       h1, h2, h3, p { margin: 0; }
       h1 { font-size: 13px; line-height: 16px; }
       h2 { margin: 8px 0 6px; font-size: 11px; text-transform: uppercase; }
       h3 { font-size: 12px; }
       a { color: #0a66ff; text-decoration: none; }
       a:hover { text-decoration: underline; }
-      nav { display: flex; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
+      nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--figma-color-border, #ddd); }
       section { display: none; flex: 1; min-height: 0; overflow: auto; padding: 8px; }
       section.active { display: block; }
       button, input, select, textarea { width: 100%; min-height: 30px; border: 1px solid var(--figma-color-border, #d0d7de); border-radius: 6px; background: var(--figma-color-bg, #fff); color: inherit; font: inherit; }
@@ -30,9 +29,7 @@
       label { display: grid; gap: 5px; min-width: 0; }
       fieldset, .panel, .empty { border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 8px; margin: 8px 0; }
       legend { font-weight: 700; padding: 0 4px; }
-      .brand { min-width: 0; }
-      .brand p { overflow: hidden; color: var(--figma-color-text-secondary, #666); text-overflow: ellipsis; white-space: nowrap; }
-      .top-actions { display: flex; gap: 6px; width: auto; }
+      .nav-pages, .nav-actions { display: flex; gap: 6px; min-width: 0; }
       .icon-btn, .tab { display: grid; width: auto; min-width: 44px; height: 30px; place-items: center; padding: 0 8px; font-weight: 700; }
       .tab { min-width: 58px; }
       .tab { color: var(--figma-color-text-secondary, #666); }
@@ -74,7 +71,9 @@
       .modal-card ul { margin: 6px 0 0; padding-left: 20px; }
       .modal-card li { margin: 4px 0; }
       [hidden] { display: none !important; }
-      footer { min-height: 32px; padding: 8px 28px 8px 10px; border-top: 1px solid var(--figma-color-border, #ddd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      footer { display: flex; justify-content: space-between; gap: 12px; min-height: 32px; padding: 8px 28px 8px 10px; border-top: 1px solid var(--figma-color-border, #ddd); }
+      footer span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #selectionText { flex: 0 1 auto; text-align: right; }
       .resize-grip { position: fixed; right: 3px; bottom: 3px; width: 18px; height: 18px; cursor: nwse-resize; opacity: .7; }
       .resize-grip::before { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid var(--figma-color-text-secondary, #777); border-bottom: 2px solid var(--figma-color-text-secondary, #777); }
       @media (max-width: 500px) { .workbench { grid-template-columns: 1fr; } .prop-grid, .two { grid-template-columns: 1fr; } }
@@ -82,20 +81,16 @@
   </head>
   <body>
     <main>
-      <header>
-        <div class="brand">
-          <h1>AI Auto Namer</h1>
-          <p id="selectionText">未选中节点</p>
-        </div>
-        <div class="top-actions">
-          <button id="refreshBtn" class="icon-btn" title="刷新选区">刷新</button>
-          <button id="settingsBtn" class="icon-btn" title="设置">设置</button>
-        </div>
-      </header>
       <nav>
-        <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
-        <button class="tab" data-tab="ue" title="UE画板">UE</button>
-        <button class="tab" data-tab="ai" title="设置/导入导出">设置</button>
+        <div class="nav-pages">
+          <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
+          <button class="tab" data-tab="tools" title="实用功能">功能</button>
+          <button class="tab" data-tab="ue" title="UE画板">UE</button>
+        </div>
+        <div class="nav-actions">
+          <button id="refreshBtn" class="icon-btn" title="刷新选区">刷新</button>
+          <button id="settingsBtn" class="tab icon-btn" data-tab="ai" title="设置/导入导出">设置</button>
+        </div>
       </nav>
 
       <section id="lexicon" class="active">
@@ -120,11 +115,6 @@
             <div id="termList" class="term-list"></div>
           </div>
           <div class="grid">
-            <div class="variant-action">
-              <label>变体模式<select id="variantMode"><option value="three">3个：跳转按钮</option><option value="six">6个：选择按钮</option></select></label>
-              <button id="createVariantsBtn" class="primary" title="将选中的 Frame 自动转为 Component，并一键制作成变体集">一键制作变体</button>
-              <button id="variantHelpBtn" class="help-btn" title="查看一键制作变体的功能明细">？</button>
-            </div>
             <button id="autoNameFrameBtn" class="primary" title="选中一个 Frame 后，一键翻译并命名所有内部节点，同时解散 Group、删除 Mask">一键整理并命名画板</button>
             <div class="panel">
               <div class="inline-action">
@@ -136,6 +126,16 @@
               <legend>命名和属性</legend>
               <div id="termEditor" class="grid"></div>
             </fieldset>
+          </div>
+        </div>
+      </section>
+
+      <section id="tools">
+        <div class="panel">
+          <div class="variant-action">
+            <label>变体模式<select id="variantMode"><option value="three">3个：跳转按钮</option><option value="six">6个：选择按钮</option></select></label>
+            <button id="createVariantsBtn" class="primary" title="将选中的 Frame 自动转为 Component，并一键制作成变体集">一键变体</button>
+            <button id="variantHelpBtn" class="help-btn" title="查看一键变体的功能明细">？</button>
           </div>
         </div>
       </section>
@@ -157,7 +157,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.8</span>
+            <span id="versionText">V0.1.9</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -198,12 +198,12 @@
         </div>
       </section>
 
-      <footer id="status">准备就绪</footer>
+      <footer><span id="status">准备就绪</span><span id="selectionText">未选中节点</span></footer>
       <div id="resizeGrip" class="resize-grip" title="拖拽调整窗口"></div>
       <div id="variantHelp" class="modal-overlay" hidden>
         <div class="modal-card">
-          <h2>一键制作变体</h2>
-          <p>先选中一个独立 Frame 或主组件，再选择模式并点击“一键制作变体”。选中 Frame 时，插件会先自动执行 Create component，再克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
+          <h2>一键变体</h2>
+          <p>先选中一个独立 Frame 或主组件，再选择模式并点击“一键变体”。选中 Frame 时，插件会先自动执行 Create component，再克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
           <h3>3 个变体：普通跳转按钮</h3>
           <p>适合点击后跳转到其他页面的普通按钮。</p>
           <ul>
@@ -576,7 +576,6 @@
 
       document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { activateTab(btn.dataset.tab); }; });
       document.getElementById("refreshBtn").onclick = function() { post({ type: "SCAN_SELECTION" }); };
-      document.getElementById("settingsBtn").onclick = function() { activateTab("ai"); };
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = deleteTerm;
