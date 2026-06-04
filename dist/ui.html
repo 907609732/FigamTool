@@ -37,7 +37,7 @@
       .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
       .meta span, .meta a { white-space: nowrap; }
       .grid { display: grid; gap: 8px; }
-      .workbench { display: grid; grid-template-columns: minmax(250px, 1.2fr) minmax(220px, 1fr); gap: 8px; align-items: start; }
+      .workbench { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 8px; align-items: start; }
       .sticky-tools { position: sticky; top: 0; z-index: 1; display: grid; gap: 8px; background: var(--figma-color-bg, #fff); }
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
@@ -60,7 +60,7 @@
       .term-card strong, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .compact-row { display: grid; grid-template-columns: 84px 1fr 28px; gap: 6px; align-items: end; margin-bottom: 8px; }
-      .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .prop-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
       .prop-line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
       .muted { color: var(--figma-color-text-secondary, #666); }
       .settings-card { display: grid; gap: 8px; }
@@ -79,9 +79,9 @@
       footer { display: flex; justify-content: space-between; gap: 12px; min-height: 32px; padding: 8px 28px 8px 10px; border-top: 1px solid var(--figma-color-border, #ddd); }
       footer span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #selectionText { flex: 0 1 auto; text-align: right; }
-      .resize-grip { position: fixed; right: 3px; bottom: 3px; width: 18px; height: 18px; cursor: nwse-resize; opacity: .7; }
+      .resize-grip { position: fixed; right: 0; bottom: 0; width: 24px; height: 24px; cursor: nwse-resize; opacity: .7; }
       .resize-grip::before { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid var(--figma-color-text-secondary, #777); border-bottom: 2px solid var(--figma-color-text-secondary, #777); }
-      @media (max-width: 500px) { .workbench { grid-template-columns: 1fr; } .prop-grid, .two { grid-template-columns: 1fr; } }
+      @media (max-width: 360px) { .workbench { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -162,7 +162,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.11</span>
+            <span id="versionText">V0.1.12</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -635,13 +635,33 @@
       document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
       ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
+      var resizeFrame = 0;
+      var pendingResize = null;
+      function sendPendingResize() {
+        resizeFrame = 0;
+        if (!pendingResize) return;
+        post({ type: "RESIZE_UI", width: pendingResize.width, height: pendingResize.height });
+        pendingResize = null;
+      }
       document.getElementById("resizeGrip").onmousedown = function(event) {
         event.preventDefault();
-        var startX = event.clientX, startY = event.clientY, startW = window.innerWidth, startH = window.innerHeight;
+        var startX = event.screenX, startY = event.screenY, startW = window.innerWidth, startH = window.innerHeight;
+        document.body.style.userSelect = "none";
         document.onmousemove = function(move) {
-          post({ type: "RESIZE_UI", width: startW + move.clientX - startX, height: startH + move.clientY - startY });
+          pendingResize = { width: startW + move.screenX - startX, height: startH + move.screenY - startY };
+          if (!resizeFrame) resizeFrame = requestAnimationFrame(sendPendingResize);
         };
-        document.onmouseup = function() { document.onmousemove = null; document.onmouseup = null; };
+        document.onmouseup = function() {
+          if (resizeFrame) cancelAnimationFrame(resizeFrame);
+          resizeFrame = 0;
+          if (pendingResize) {
+            post({ type: "RESIZE_UI", width: pendingResize.width, height: pendingResize.height });
+            pendingResize = null;
+          }
+          document.body.style.userSelect = "";
+          document.onmousemove = null;
+          document.onmouseup = null;
+        };
       };
 
       window.onmessage = function(event) {
