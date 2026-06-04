@@ -314,8 +314,9 @@
       }
       if (message.type === "CREATE_VARIANTS") {
         const result = await createVariants(message.mode);
-        post({ type: "APPLY_RESULT", message: `\u5DF2\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53\uFF1A${result.name}` });
-        figma.notify(`\u5DF2\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53`);
+        const prefix = result.convertedFrame ? "\u5DF2\u5C06 Frame \u8F6C\u4E3A Component\uFF0C\u5E76" : "";
+        post({ type: "APPLY_RESULT", message: `${prefix}\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53\uFF1A${result.name}` });
+        figma.notify(`${prefix}\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53`);
         return;
       }
       if (message.type === "CREATE_UE_FRAME") {
@@ -525,10 +526,12 @@
     var _a;
     await ensureCurrentPageLoaded();
     const selection = Array.from(figma.currentPage.selection);
-    if (selection.length !== 1 || selection[0].type !== "COMPONENT") {
-      throw new Error("\u8BF7\u53EA\u9009\u4E2D\u4E00\u4E2A\u5C1A\u672A\u52A0\u5165\u53D8\u4F53\u96C6\u7684\u4E3B\u7EC4\u4EF6\uFF08Component\uFF09");
+    if (selection.length !== 1 || selection[0].type !== "COMPONENT" && selection[0].type !== "FRAME") {
+      throw new Error("\u8BF7\u53EA\u9009\u4E2D\u4E00\u4E2A\u72EC\u7ACB\u7684 Frame \u6216\u5C1A\u672A\u52A0\u5165\u53D8\u4F53\u96C6\u7684\u4E3B\u7EC4\u4EF6\uFF08Component\uFF09");
     }
-    const source = selection[0];
+    const selected = selection[0];
+    const convertedFrame = selected.type === "FRAME";
+    const source = selected.type === "FRAME" ? figma.createComponentFromNode(selected) : selected;
     if (((_a = source.parent) == null ? void 0 : _a.type) === "COMPONENT_SET") {
       throw new Error("\u8FD9\u4E2A\u7EC4\u4EF6\u5DF2\u7ECF\u662F\u53D8\u4F53\uFF0C\u8BF7\u9009\u62E9\u4E00\u4E2A\u72EC\u7ACB\u4E3B\u7EC4\u4EF6");
     }
@@ -556,7 +559,7 @@
       componentSet.name = originalName;
       figma.currentPage.selection = [componentSet];
       figma.viewport.scrollAndZoomIntoView([componentSet]);
-      return { count: definitions.length, name: componentSet.name };
+      return { count: definitions.length, name: componentSet.name, convertedFrame };
     } catch (error) {
       source.name = originalName;
       for (const clone of clones) {

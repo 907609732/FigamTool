@@ -122,7 +122,7 @@
           <div class="grid">
             <div class="variant-action">
               <label>变体模式<select id="variantMode"><option value="three">3个：跳转按钮</option><option value="six">6个：选择按钮</option></select></label>
-              <button id="createVariantsBtn" class="primary" title="将选中的独立主组件一键制作成变体集">一键制作变体</button>
+              <button id="createVariantsBtn" class="primary" title="将选中的 Frame 自动转为 Component，并一键制作成变体集">一键制作变体</button>
               <button id="variantHelpBtn" class="help-btn" title="查看一键制作变体的功能明细">？</button>
             </div>
             <button id="autoNameFrameBtn" class="primary" title="选中一个 Frame 后，一键翻译并命名所有内部节点，同时解散 Group、删除 Mask">一键整理并命名画板</button>
@@ -203,7 +203,7 @@
       <div id="variantHelp" class="modal-overlay" hidden>
         <div class="modal-card">
           <h2>一键制作变体</h2>
-          <p>先选中一个独立主组件，再选择模式并点击“一键制作变体”。插件会克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
+          <p>先选中一个独立 Frame 或主组件，再选择模式并点击“一键制作变体”。选中 Frame 时，插件会先自动执行 Create component，再克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
           <h3>3 个变体：普通跳转按钮</h3>
           <p>适合点击后跳转到其他页面的普通按钮。</p>
           <ul>

@@ -113,8 +113,9 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
 
     if (message.type === "CREATE_VARIANTS") {
       const result = await createVariants(message.mode);
-      post({ type: "APPLY_RESULT", message: `已制作 ${result.count} 个变体：${result.name}` });
-      figma.notify(`已制作 ${result.count} 个变体`);
+      const prefix = result.convertedFrame ? "已将 Frame 转为 Component，并" : "";
+      post({ type: "APPLY_RESULT", message: `${prefix}制作 ${result.count} 个变体：${result.name}` });
+      figma.notify(`${prefix}制作 ${result.count} 个变体`);
       return;
     }
 
@@ -347,14 +348,16 @@ async function translateAndRename(
   return { renamed, name: baseName };
 }
 
-async function createVariants(mode: VariantMode): Promise<{ count: number; name: string }> {
+async function createVariants(mode: VariantMode): Promise<{ count: number; name: string; convertedFrame: boolean }> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
-  if (selection.length !== 1 || selection[0].type !== "COMPONENT") {
-    throw new Error("请只选中一个尚未加入变体集的主组件（Component）");
+  if (selection.length !== 1 || (selection[0].type !== "COMPONENT" && selection[0].type !== "FRAME")) {
+    throw new Error("请只选中一个独立的 Frame 或尚未加入变体集的主组件（Component）");
   }
 
-  const source = selection[0];
+  const selected = selection[0];
+  const convertedFrame = selected.type === "FRAME";
+  const source: ComponentNode = selected.type === "FRAME" ? figma.createComponentFromNode(selected) : selected;
   if (source.parent?.type === "COMPONENT_SET") {
     throw new Error("这个组件已经是变体，请选择一个独立主组件");
   }
@@ -385,7 +388,7 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
     componentSet.name = originalName;
     figma.currentPage.selection = [componentSet];
     figma.viewport.scrollAndZoomIntoView([componentSet]);
-    return { count: definitions.length, name: componentSet.name };
+    return { count: definitions.length, name: componentSet.name, convertedFrame };
   } catch (error) {
     source.name = originalName;
     for (const clone of clones) {
