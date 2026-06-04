@@ -1,6 +1,7 @@
 export type NodeKind = "TEXT" | "IMAGE" | "COMPONENT" | "FRAME" | "SHAPE" | "NODE";
 export type RenameScope = "selection" | "children" | "deep";
 export type UeLayoutMode = "preserve" | "grid";
+export type VariantMode = "three" | "six";
 
 export interface NamingRule {
   id: string;
@@ -136,6 +137,7 @@ export type UiToPluginMessage =
   | { type: "GENERATE_AI_NAMES"; options: RenameOptions; config: PluginConfig }
   | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig }
   | { type: "AUTO_NAME_FRAME"; config: PluginConfig }
+  | { type: "CREATE_VARIANTS"; mode: VariantMode }
   | { type: "RESIZE_UI"; width: number; height: number };
 
 export const defaultConfig: PluginConfig = {

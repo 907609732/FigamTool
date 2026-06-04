@@ -11,7 +11,8 @@ import {
   type SelectionSummary,
   type TranslateSettings,
   type UeLayoutOptions,
-  type UiToPluginMessage
+  type UiToPluginMessage,
+  type VariantMode
 } from "./shared";
 
 const CONFIG_KEY = "ai-auto-namer-config";
@@ -107,6 +108,13 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
         message: `一键命名完成：命名 ${result.renamed} 个，解散 Group ${result.groups} 个，删除 Mask ${result.masks} 个，跳过 ${result.skipped} 个`
       });
       figma.notify(`一键命名完成：${result.renamed} 个节点`);
+      return;
+    }
+
+    if (message.type === "CREATE_VARIANTS") {
+      const result = await createVariants(message.mode);
+      post({ type: "APPLY_RESULT", message: `已制作 ${result.count} 个变体：${result.name}` });
+      figma.notify(`已制作 ${result.count} 个变体`);
       return;
     }
 
@@ -337,6 +345,100 @@ async function translateAndRename(
     renamed += 1;
   }
   return { renamed, name: baseName };
+}
+
+async function createVariants(mode: VariantMode): Promise<{ count: number; name: string }> {
+  await ensureCurrentPageLoaded();
+  const selection = Array.from(figma.currentPage.selection);
+  if (selection.length !== 1 || selection[0].type !== "COMPONENT") {
+    throw new Error("请只选中一个尚未加入变体集的主组件（Component）");
+  }
+
+  const source = selection[0];
+  if (source.parent?.type === "COMPONENT_SET") {
+    throw new Error("这个组件已经是变体，请选择一个独立主组件");
+  }
+  const parent = source.parent;
+  if (!isChildrenContainer(parent)) throw new Error("当前组件所在位置无法创建变体集");
+
+  const originalName = source.name;
+  const originalX = source.x;
+  const originalY = source.y;
+  const parentIndex = parent.children.indexOf(source);
+  const definitions = variantDefinitions(mode);
+  const components: ComponentNode[] = [];
+  const clones: ComponentNode[] = [];
+
+  try {
+    for (let index = 0; index < definitions.length; index += 1) {
+      const component = index === 0 ? source : source.clone();
+      if (index > 0) {
+        parent.appendChild(component);
+        clones.push(component);
+      }
+      component.name = variantComponentName(definitions[index]);
+      positionVariant(component, index, mode, originalX, originalY, source.width, source.height);
+      components.push(component);
+    }
+
+    const componentSet = figma.combineAsVariants(components, parent, parentIndex);
+    componentSet.name = originalName;
+    figma.currentPage.selection = [componentSet];
+    figma.viewport.scrollAndZoomIntoView([componentSet]);
+    return { count: definitions.length, name: componentSet.name };
+  } catch (error) {
+    source.name = originalName;
+    for (const clone of clones) {
+      if (!clone.removed) clone.remove();
+    }
+    throw new Error(`制作变体失败：${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function variantDefinitions(mode: VariantMode): Array<{ State: string; Checked?: string }> {
+  if (mode === "six") {
+    return [
+      { State: "Normal", Checked: "Unchecked" },
+      { State: "Hover", Checked: "Unchecked" },
+      { State: "Pressed", Checked: "Unchecked" },
+      { State: "Normal", Checked: "Checked" },
+      { State: "Hover", Checked: "Checked" },
+      { State: "Pressed", Checked: "Checked" }
+    ];
+  }
+  return [{ State: "Normal" }, { State: "Hover" }, { State: "Pressed" }];
+}
+
+function variantComponentName(definition: { State: string; Checked?: string }): string {
+  return definition.Checked
+    ? `State=${definition.State}, Checked=${definition.Checked}`
+    : `State=${definition.State}`;
+}
+
+function positionVariant(
+  component: ComponentNode,
+  index: number,
+  mode: VariantMode,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  try {
+    if (mode === "six") {
+      component.x = x + (index % 3) * (width + 20);
+      component.y = y + Math.floor(index / 3) * (height + 40);
+    } else {
+      component.x = x;
+      component.y = y + index * (height + 20);
+    }
+  } catch {
+    // Auto-layout parents decide positioning; combineAsVariants can still create the set.
+  }
+}
+
+function isChildrenContainer(node: BaseNode | null): node is BaseNode & ChildrenMixin {
+  return !!node && "children" in node && "appendChild" in node && "insertChild" in node;
 }
 
 async function autoNameFrame(

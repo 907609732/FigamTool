@@ -49,6 +49,8 @@
       .quick-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
       .quick-row button { width: auto; min-width: 44px; min-height: 26px; padding: 0 8px; }
       .inline-action { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; align-items: end; }
+      .variant-action { display: grid; grid-template-columns: minmax(0, 1fr) 112px 32px; gap: 8px; align-items: end; }
+      .help-btn { width: 32px; min-width: 32px; padding: 0; font-size: 16px; font-weight: 700; }
       .percent-input { display: grid; grid-template-columns: minmax(0, 1fr) 18px; gap: 4px; align-items: center; }
       .percent-input span { color: var(--figma-color-text-secondary, #666); }
       .check { display: flex; align-items: center; gap: 8px; min-height: 30px; }
@@ -65,6 +67,13 @@
       .prop-line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
       .muted { color: var(--figma-color-text-secondary, #666); }
       .settings-card { display: grid; gap: 8px; }
+      .modal-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(0, 0, 0, .55); }
+      .modal-card { width: min(460px, 100%); max-height: calc(100vh - 36px); overflow: auto; border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 14px; background: var(--figma-color-bg, #fff); }
+      .modal-card h2 { margin-top: 0; font-size: 14px; text-transform: none; }
+      .modal-card h3 { margin-top: 12px; }
+      .modal-card ul { margin: 6px 0 0; padding-left: 20px; }
+      .modal-card li { margin: 4px 0; }
+      [hidden] { display: none !important; }
       footer { min-height: 32px; padding: 8px 28px 8px 10px; border-top: 1px solid var(--figma-color-border, #ddd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .resize-grip { position: fixed; right: 3px; bottom: 3px; width: 18px; height: 18px; cursor: nwse-resize; opacity: .7; }
       .resize-grip::before { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid var(--figma-color-text-secondary, #777); border-bottom: 2px solid var(--figma-color-text-secondary, #777); }
@@ -111,6 +120,11 @@
             <div id="termList" class="term-list"></div>
           </div>
           <div class="grid">
+            <div class="variant-action">
+              <label>变体模式<select id="variantMode"><option value="three">3个：跳转按钮</option><option value="six">6个：选择按钮</option></select></label>
+              <button id="createVariantsBtn" class="primary" title="将选中的独立主组件一键制作成变体集">一键制作变体</button>
+              <button id="variantHelpBtn" class="help-btn" title="查看一键制作变体的功能明细">？</button>
+            </div>
             <button id="autoNameFrameBtn" class="primary" title="选中一个 Frame 后，一键翻译并命名所有内部节点，同时解散 Group、删除 Mask">一键整理并命名画板</button>
             <div class="panel">
               <div class="inline-action">
@@ -143,7 +157,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.6</span>
+            <span id="versionText">V0.1.7</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -186,6 +200,30 @@
 
       <footer id="status">准备就绪</footer>
       <div id="resizeGrip" class="resize-grip" title="拖拽调整窗口"></div>
+      <div id="variantHelp" class="modal-overlay" hidden>
+        <div class="modal-card">
+          <h2>一键制作变体</h2>
+          <p>先选中一个独立主组件，再选择模式并点击“一键制作变体”。插件会克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
+          <h3>3 个变体：普通跳转按钮</h3>
+          <p>适合点击后跳转到其他页面的普通按钮。</p>
+          <ul>
+            <li>State=Normal</li>
+            <li>State=Hover</li>
+            <li>State=Pressed</li>
+          </ul>
+          <h3>6 个变体：选择按钮</h3>
+          <p>适合点击后切换到另一种选中状态的按钮。</p>
+          <ul>
+            <li>State=Normal, Checked=Unchecked</li>
+            <li>State=Hover, Checked=Unchecked</li>
+            <li>State=Pressed, Checked=Unchecked</li>
+            <li>State=Normal, Checked=Checked</li>
+            <li>State=Hover, Checked=Checked</li>
+            <li>State=Pressed, Checked=Checked</li>
+          </ul>
+          <button id="closeVariantHelpBtn">关闭</button>
+        </div>
+      </div>
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
@@ -435,6 +473,14 @@
         status("正在整理并一键命名画板...");
         post({ type: "AUTO_NAME_FRAME", config: config });
       }
+      function createVariants() {
+        var mode = value("variantMode");
+        status("正在制作 " + (mode === "six" ? "6" : "3") + " 个变体...");
+        post({ type: "CREATE_VARIANTS", mode: mode });
+      }
+      function showVariantHelp(show) {
+        document.getElementById("variantHelp").hidden = !show;
+      }
       function applyAiPreset(provider) {
         config.aiSettings.provider = provider;
         if (provider === "kimi") {
@@ -534,6 +580,10 @@
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = deleteTerm;
+      document.getElementById("createVariantsBtn").onclick = createVariants;
+      document.getElementById("variantHelpBtn").onclick = function() { showVariantHelp(true); };
+      document.getElementById("closeVariantHelpBtn").onclick = function() { showVariantHelp(false); };
+      document.getElementById("variantHelp").onclick = function(event) { if (event.target.id === "variantHelp") showVariantHelp(false); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
       document.getElementById("translateBtn").onclick = translateAndRename;
       document.getElementById("createUeBtn").onclick = function() { config.ueDefaults = ueOptions(); save(); post({ type: "CREATE_UE_FRAME", options: config.ueDefaults, config: config }); };

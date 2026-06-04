@@ -312,6 +312,12 @@
         figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.renamed} \u4E2A\u8282\u70B9`);
         return;
       }
+      if (message.type === "CREATE_VARIANTS") {
+        const result = await createVariants(message.mode);
+        post({ type: "APPLY_RESULT", message: `\u5DF2\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53\uFF1A${result.name}` });
+        figma.notify(`\u5DF2\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53`);
+        return;
+      }
       if (message.type === "CREATE_UE_FRAME") {
         const created = await createUeFrame(message.options, message.config);
         post({ type: "UE_RESULT", message: `\u5DF2\u751F\u6210 ${created.name}\uFF0C\u5305\u542B ${created.count} \u4E2A\u8282\u70B9` });
@@ -514,6 +520,81 @@
       renamed += 1;
     }
     return { renamed, name: baseName };
+  }
+  async function createVariants(mode) {
+    var _a;
+    await ensureCurrentPageLoaded();
+    const selection = Array.from(figma.currentPage.selection);
+    if (selection.length !== 1 || selection[0].type !== "COMPONENT") {
+      throw new Error("\u8BF7\u53EA\u9009\u4E2D\u4E00\u4E2A\u5C1A\u672A\u52A0\u5165\u53D8\u4F53\u96C6\u7684\u4E3B\u7EC4\u4EF6\uFF08Component\uFF09");
+    }
+    const source = selection[0];
+    if (((_a = source.parent) == null ? void 0 : _a.type) === "COMPONENT_SET") {
+      throw new Error("\u8FD9\u4E2A\u7EC4\u4EF6\u5DF2\u7ECF\u662F\u53D8\u4F53\uFF0C\u8BF7\u9009\u62E9\u4E00\u4E2A\u72EC\u7ACB\u4E3B\u7EC4\u4EF6");
+    }
+    const parent = source.parent;
+    if (!isChildrenContainer(parent)) throw new Error("\u5F53\u524D\u7EC4\u4EF6\u6240\u5728\u4F4D\u7F6E\u65E0\u6CD5\u521B\u5EFA\u53D8\u4F53\u96C6");
+    const originalName = source.name;
+    const originalX = source.x;
+    const originalY = source.y;
+    const parentIndex = parent.children.indexOf(source);
+    const definitions = variantDefinitions(mode);
+    const components = [];
+    const clones = [];
+    try {
+      for (let index = 0; index < definitions.length; index += 1) {
+        const component = index === 0 ? source : source.clone();
+        if (index > 0) {
+          parent.appendChild(component);
+          clones.push(component);
+        }
+        component.name = variantComponentName(definitions[index]);
+        positionVariant(component, index, mode, originalX, originalY, source.width, source.height);
+        components.push(component);
+      }
+      const componentSet = figma.combineAsVariants(components, parent, parentIndex);
+      componentSet.name = originalName;
+      figma.currentPage.selection = [componentSet];
+      figma.viewport.scrollAndZoomIntoView([componentSet]);
+      return { count: definitions.length, name: componentSet.name };
+    } catch (error) {
+      source.name = originalName;
+      for (const clone of clones) {
+        if (!clone.removed) clone.remove();
+      }
+      throw new Error(`\u5236\u4F5C\u53D8\u4F53\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  function variantDefinitions(mode) {
+    if (mode === "six") {
+      return [
+        { State: "Normal", Checked: "Unchecked" },
+        { State: "Hover", Checked: "Unchecked" },
+        { State: "Pressed", Checked: "Unchecked" },
+        { State: "Normal", Checked: "Checked" },
+        { State: "Hover", Checked: "Checked" },
+        { State: "Pressed", Checked: "Checked" }
+      ];
+    }
+    return [{ State: "Normal" }, { State: "Hover" }, { State: "Pressed" }];
+  }
+  function variantComponentName(definition) {
+    return definition.Checked ? `State=${definition.State}, Checked=${definition.Checked}` : `State=${definition.State}`;
+  }
+  function positionVariant(component, index, mode, x, y, width, height) {
+    try {
+      if (mode === "six") {
+        component.x = x + index % 3 * (width + 20);
+        component.y = y + Math.floor(index / 3) * (height + 40);
+      } else {
+        component.x = x;
+        component.y = y + index * (height + 20);
+      }
+    } catch (e) {
+    }
+  }
+  function isChildrenContainer(node) {
+    return !!node && "children" in node && "appendChild" in node && "insertChild" in node;
   }
   async function autoNameFrame(config) {
     var _a, _b, _c, _d;
