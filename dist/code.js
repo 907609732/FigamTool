@@ -311,9 +311,9 @@
         const result = await autoNameFrame(message.config);
         post({
           type: "APPLY_RESULT",
-          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u89E3\u6563 Group ${result.groups} \u4E2A\uFF0C\u5220\u9664 Mask ${result.masks} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
+          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u753B\u677F ${result.frameName}\uFF0C\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u89E3\u6563 Group ${result.groups} \u4E2A\uFF0C\u5220\u9664 Mask ${result.masks} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
         });
-        figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.renamed} \u4E2A\u8282\u70B9`);
+        figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.frameName}`);
         return;
       }
       if (message.type === "CREATE_VARIANTS") {
@@ -620,7 +620,7 @@
     return !!node && "children" in node && "appendChild" in node && "insertChild" in node;
   }
   async function autoNameFrame(config) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     await ensureCurrentPageLoaded();
     const selection = Array.from(figma.currentPage.selection);
     if (selection.length !== 1 || selection[0].type !== "FRAME") {
@@ -630,8 +630,11 @@
     const normalized = normalizeConfig(config);
     const ruleByKind = new Map(normalized.namingRules.map((rule) => [rule.kind, rule.prefix]));
     const candidates = collectAutoNameCandidates(root);
-    const sources = candidates.map((candidate) => candidate.source);
+    const originalFrameName = root.name.trim() || "Frame";
+    const sources = [originalFrameName, ...candidates.map((candidate) => candidate.source)];
     const translations = await translateSources(sources, normalized.translateSettings);
+    const frameTranslation = (_a = translations.get(originalFrameName)) != null ? _a : originalFrameName;
+    root.name = buildAutoFrameName(figma.root.name, frameTranslation, root.width, root.height);
     const cleanup = cleanGroupsAndMasks(root);
     const counters = /* @__PURE__ */ new Map();
     let renamed = 0;
@@ -642,11 +645,11 @@
           skipped += 1;
           continue;
         }
-        const prefix = (_b = (_a = ruleByKind.get(candidate.kind)) != null ? _a : ruleByKind.get("NODE")) != null ? _b : "Node";
-        const translated = (_c = translations.get(candidate.source)) != null ? _c : candidate.source;
+        const prefix = (_c = (_b = ruleByKind.get(candidate.kind)) != null ? _b : ruleByKind.get("NODE")) != null ? _c : "Node";
+        const translated = (_d = translations.get(candidate.source)) != null ? _d : candidate.source;
         const body = stripNamingPrefix(toNodeName(translated), prefix);
         const baseName = `${prefix}${body || candidate.kind.charAt(0) + candidate.kind.slice(1).toLowerCase()}`;
-        const next = ((_d = counters.get(baseName)) != null ? _d : 0) + 1;
+        const next = ((_e = counters.get(baseName)) != null ? _e : 0) + 1;
         counters.set(baseName, next);
         candidate.node.name = next > 1 ? `${baseName}_${String(next).padStart(2, "0")}` : baseName;
         renamed += 1;
@@ -655,7 +658,22 @@
       }
     }
     figma.currentPage.selection = [root];
-    return { renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+    return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+  }
+  function buildAutoFrameName(projectName, translatedFrameName, width, height) {
+    const project = toNodeName(projectName) || "Project";
+    const translated = stripFramePlatformToken(toNodeName(translatedFrameName)) || "Frame";
+    return `${project}${translated}${framePlatformSuffix(width, height)}`;
+  }
+  function framePlatformSuffix(width, height) {
+    const roundedWidth = Math.round(width);
+    const roundedHeight = Math.round(height);
+    if (roundedWidth === 2340 && roundedHeight === 1080) return "IOS";
+    if (roundedWidth === 2560 && roundedHeight === 1440) return "PC";
+    return "Item";
+  }
+  function stripFramePlatformToken(value) {
+    return value.replace(/^(IOS|PC|Item)+/i, "").replace(/(IOS|PC|Item)+$/i, "");
   }
   function collectAutoNameCandidates(root) {
     const candidates = [];

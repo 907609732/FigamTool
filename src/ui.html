@@ -37,7 +37,7 @@
       .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
       .meta span, .meta a { white-space: nowrap; }
       .grid { display: grid; gap: 8px; }
-      .workbench { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(240px, 1.2fr); gap: 8px; align-items: start; }
+      .workbench { display: grid; grid-template-columns: minmax(250px, 1.2fr) minmax(220px, 1fr); gap: 8px; align-items: start; }
       .sticky-tools { position: sticky; top: 0; z-index: 1; display: grid; gap: 8px; background: var(--figma-color-bg, #fff); }
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
@@ -120,7 +120,7 @@
             <div id="termList" class="term-list"></div>
           </div>
           <div class="grid">
-            <button id="autoNameFrameBtn" class="primary" title="选中一个 Frame 后，一键翻译并命名所有内部节点，同时解散 Group、删除 Mask">一键整理并命名画板</button>
+            <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
             <div class="panel">
               <div class="inline-action">
                 <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>

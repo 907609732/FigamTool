@@ -106,9 +106,9 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       const result = await autoNameFrame(message.config);
       post({
         type: "APPLY_RESULT",
-        message: `一键命名完成：命名 ${result.renamed} 个，解散 Group ${result.groups} 个，删除 Mask ${result.masks} 个，跳过 ${result.skipped} 个`
+        message: `一键命名完成：画板 ${result.frameName}，命名 ${result.renamed} 个，解散 Group ${result.groups} 个，删除 Mask ${result.masks} 个，跳过 ${result.skipped} 个`
       });
-      figma.notify(`一键命名完成：${result.renamed} 个节点`);
+      figma.notify(`一键命名完成：${result.frameName}`);
       return;
     }
 
@@ -463,7 +463,7 @@ function isChildrenContainer(node: BaseNode | null): node is BaseNode & Children
 
 async function autoNameFrame(
   config: PluginConfig
-): Promise<{ renamed: number; groups: number; masks: number; skipped: number }> {
+): Promise<{ frameName: string; renamed: number; groups: number; masks: number; skipped: number }> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
   if (selection.length !== 1 || selection[0].type !== "FRAME") {
@@ -474,8 +474,11 @@ async function autoNameFrame(
   const normalized = normalizeConfig(config);
   const ruleByKind = new Map(normalized.namingRules.map((rule) => [rule.kind, rule.prefix]));
   const candidates = collectAutoNameCandidates(root);
-  const sources = candidates.map((candidate) => candidate.source);
+  const originalFrameName = root.name.trim() || "Frame";
+  const sources = [originalFrameName, ...candidates.map((candidate) => candidate.source)];
   const translations = await translateSources(sources, normalized.translateSettings);
+  const frameTranslation = translations.get(originalFrameName) ?? originalFrameName;
+  root.name = buildAutoFrameName(figma.root.name, frameTranslation, root.width, root.height);
   const cleanup = cleanGroupsAndMasks(root);
   const counters = new Map<string, number>();
   let renamed = 0;
@@ -501,7 +504,25 @@ async function autoNameFrame(
   }
 
   figma.currentPage.selection = [root];
-  return { renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+  return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+}
+
+function buildAutoFrameName(projectName: string, translatedFrameName: string, width: number, height: number): string {
+  const project = toNodeName(projectName) || "Project";
+  const translated = stripFramePlatformToken(toNodeName(translatedFrameName)) || "Frame";
+  return `${project}${translated}${framePlatformSuffix(width, height)}`;
+}
+
+function framePlatformSuffix(width: number, height: number): "IOS" | "PC" | "Item" {
+  const roundedWidth = Math.round(width);
+  const roundedHeight = Math.round(height);
+  if (roundedWidth === 2340 && roundedHeight === 1080) return "IOS";
+  if (roundedWidth === 2560 && roundedHeight === 1440) return "PC";
+  return "Item";
+}
+
+function stripFramePlatformToken(value: string): string {
+  return value.replace(/^(IOS|PC|Item)+/i, "").replace(/(IOS|PC|Item)+$/i, "");
 }
 
 function collectAutoNameCandidates(root: SceneNode & ChildrenMixin): Array<{ node: SceneNode; kind: NodeKind; source: string }> {
