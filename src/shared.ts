@@ -106,6 +106,8 @@ export interface PluginConfig {
   namingRules: NamingRule[];
   lexicon: LexiconEntry[];
   propertyPresets: PropertyPreset[];
+  activePropertyPresetId: string;
+  applyPropertiesOnRename: boolean;
   ueDefaults: UeLayoutOptions;
   aiSettings: AiSettings;
   translateSettings: TranslateSettings;
@@ -294,8 +296,8 @@ export const defaultConfig: PluginConfig = {
   propertyPresets: [
     {
       id: "ue-text-center",
-      name: "UE Text Center",
-      targetKinds: ["TEXT"],
+      name: "文本 28 居中",
+      targetKinds: ["TEXT", "IMAGE", "COMPONENT", "FRAME", "SHAPE", "NODE"],
       enabled: {
         opacity: true,
         fontSize: true,
@@ -330,6 +332,8 @@ export const defaultConfig: PluginConfig = {
       }
     }
   ],
+  activePropertyPresetId: "ue-text-center",
+  applyPropertiesOnRename: true,
   ueDefaults: {
     mode: "preserve",
     spacing: 24,

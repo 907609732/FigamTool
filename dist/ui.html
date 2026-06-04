@@ -45,6 +45,9 @@
       .compact-actions { display: grid; grid-template-columns: repeat(3, minmax(44px, 1fr)); gap: 6px; }
       .quick-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
       .quick-row button { width: auto; min-width: 44px; min-height: 26px; padding: 0 8px; }
+      .preset-switcher { display: flex; flex-wrap: wrap; gap: 6px; }
+      .preset-switcher button { width: auto; min-width: 54px; min-height: 28px; padding: 0 8px; }
+      .preset-switcher button.active { border-color: #0a66ff; color: #0a66ff; }
       .inline-action { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; align-items: end; }
       .variant-action { display: grid; grid-template-columns: minmax(0, 1fr) 112px 32px; gap: 8px; align-items: end; }
       .help-btn { width: 32px; min-width: 32px; padding: 0; font-size: 16px; font-weight: 700; }
@@ -128,7 +131,7 @@
               </div>
             </div>
             <fieldset>
-              <legend>命名和属性</legend>
+              <legend>命名和共享属性</legend>
               <div id="termEditor" class="grid"></div>
             </fieldset>
           </div>
@@ -162,7 +165,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.12</span>
+            <span id="versionText">V0.1.13</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -179,15 +182,15 @@
           </div>
           <button id="saveTranslateBtn" title="将百度翻译设置保存到当前 Figma 插件的本机存储">保存百度翻译</button>
         </div>
-        <h2>词库方案</h2>
+        <h2>词库与属性方案</h2>
         <div class="actions">
           <button id="exportCsvBtn">导出 Excel(CSV)</button>
           <button id="importCsvBtn">导入 CSV</button>
-          <button id="exportJsonBtn">导出 JSON</button>
+          <button id="exportJsonBtn">导出 JSON（含属性方案）</button>
         </div>
         <textarea id="ioBox" placeholder="这里会显示导出的 JSON/CSV；导入 CSV 时，把 Excel/WPS 另存为 CSV 后粘贴到这里。"></textarea>
         <div class="actions">
-          <button id="importJsonBtn">导入 JSON</button>
+          <button id="importJsonBtn">导入 JSON（含属性方案）</button>
           <button id="writeProjectBtn">写入项目配置</button>
           <button id="resetBtn" class="danger">恢复默认词库</button>
         </div>
@@ -282,14 +285,16 @@
             term("lex-panel", "Panel", "Panel 面板", "FRAME", "弹窗/面板容器", false, 28),
             term("lex-bg", "Bg", "Background 背景", "SHAPE", "背景块/底图", false, 28)
           ],
-          propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
+          propertyPresets: [{ id: "ue-text-center", name: "文本 28 居中", targetKinds: ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
+          activePropertyPresetId: "ue-text-center",
+          applyPropertiesOnRename: true,
           ueDefaults: { mode: "preserve", spacing: 24, preserveSize: true, includeHidden: false, includeLocked: false, maxGridItemSize: 160 },
           aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." },
           translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en" }
         };
       }
-      function term(id, word, label, kind, description, applyProperties, fontSize) {
-        return { id: id, word: word, label: label, kind: kind, prefix: word, description: description, applyProperties: applyProperties, enabled: { fontFamily: applyProperties, fontStyle: applyProperties, fontSize: applyProperties, lineHeightPercent: applyProperties, textAlignHorizontal: applyProperties, textAlignVertical: applyProperties, textFill: applyProperties }, values: Object.assign({}, defaultValues, { fontSize: fontSize, lineHeightPercent: 150, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER" }) };
+      function term(id, word, label, kind, description) {
+        return { id: id, word: word, label: label, kind: kind, prefix: word, description: description };
       }
       function post(message) { parent.postMessage({ pluginMessage: message }, "*"); }
       function status(text) { document.getElementById("status").textContent = text; }
@@ -310,24 +315,32 @@
         if (!config.lexicon) config.lexicon = fallback.lexicon;
         config.lexicon = config.lexicon.map(function(entry, index) {
           var oldWord = entry.word || entry.prefix || entry.label || "Node";
-          var values = Object.assign({}, defaultValues, entry.values || {});
-          if (values.lineHeightPercent == null) values.lineHeightPercent = 150;
-          if (!values.textAlignHorizontal) values.textAlignHorizontal = "CENTER";
-          if (!values.textAlignVertical) values.textAlignVertical = "CENTER";
           entry.id = entry.id || "lex-" + index;
           entry.word = oldWord;
           entry.label = entry.label || oldWord;
           entry.kind = entry.kind || "NODE";
           entry.prefix = entry.prefix || oldWord;
           entry.description = entry.description || "";
-          entry.applyProperties = !!entry.applyProperties;
-          entry.enabled = entry.enabled || {};
-          entry.values = values;
+          delete entry.applyProperties;
+          delete entry.enabled;
+          delete entry.values;
           return entry;
         });
         var existing = {};
         config.lexicon.forEach(function(entry) { existing[entry.id] = true; });
         fallback.lexicon.forEach(function(entry) { if (!existing[entry.id]) config.lexicon.push(JSON.parse(JSON.stringify(entry))); });
+        config.propertyPresets = Array.isArray(config.propertyPresets) && config.propertyPresets.length ? config.propertyPresets : fallback.propertyPresets;
+        config.propertyPresets = config.propertyPresets.map(function(preset, index) {
+          return {
+            id: preset.id || "preset-" + index,
+            name: preset.name || "属性方案 " + (index + 1),
+            targetKinds: Array.isArray(preset.targetKinds) && preset.targetKinds.length ? preset.targetKinds : nodeKinds.slice(),
+            enabled: Object.assign({}, preset.enabled || {}),
+            values: Object.assign({}, defaultValues, preset.values || {})
+          };
+        });
+        if (!config.propertyPresets.some(function(preset) { return preset.id === config.activePropertyPresetId; })) config.activePropertyPresetId = config.propertyPresets[0].id;
+        if (config.applyPropertiesOnRename == null) config.applyPropertiesOnRename = true;
         config.aiSettings = Object.assign({}, fallback.aiSettings, config.aiSettings || {});
         if (!config.aiSettings.apiKey && localTestConfig && localTestConfig.aiSettings) Object.assign(config.aiSettings, localTestConfig.aiSettings);
         if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible";
@@ -345,6 +358,7 @@
         return config.lexicon.filter(function(entry) { return entry.kind === kind; });
       }
       function activeTerm() { return config.lexicon.find(function(entry) { return entry.id === activeTermId; }) || visibleTerms()[0] || config.lexicon[0]; }
+      function activePreset() { return config.propertyPresets.find(function(preset) { return preset.id === config.activePropertyPresetId; }) || config.propertyPresets[0]; }
       function renderSelection() {
         document.getElementById("selectionText").textContent = selection.count ? "已选中 " + selection.count + " 个节点" : "未选中节点";
         var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.kind + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
@@ -357,7 +371,7 @@
         if (terms.length && !terms.some(function(entry) { return entry.id === activeTermId; })) activeTermId = terms[0].id;
         if (!terms.length && config.lexicon.length) activeTermId = config.lexicon[0].id;
         document.getElementById("termList").innerHTML = terms.length ? terms.map(function(entry) {
-          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + entry.kind + '</small><small>' + (entry.applyProperties ? "改名 + 属性" : "仅改名") + '</small></button>';
+          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + entry.kind + '</small><small>' + (config.applyPropertiesOnRename ? "改名 + 当前方案" : "仅改名") + '</small></button>';
         }).join("") : '<div class="empty">当前选中节点类型没有可用词条，请新增一个 ' + esc(selectedKind()) + ' 词条。</div>';
         document.querySelectorAll("[data-apply-term]").forEach(function(btn) {
           btn.onclick = function() {
@@ -371,16 +385,22 @@
       function renderTermEditor() {
         var entry = activeTerm();
         if (!entry) { document.getElementById("termEditor").innerHTML = '<p class="muted">暂无词条。</p>'; return; }
-        var v = Object.assign({}, defaultValues, entry.values || {});
-        var enabled = entry.enabled || {};
+        var preset = activePreset();
+        var v = Object.assign({}, defaultValues, preset.values || {});
+        var enabled = preset.enabled || {};
         document.getElementById("termEditor").innerHTML =
+          '<h3>词条设置</h3>' +
           '<div class="two grid">' +
             '<label>词条单词/节点名<input id="termWord" value="' + esc(entry.word) + '"></label>' +
             '<label>显示名称<input id="termLabel" value="' + esc(entry.label) + '"></label>' +
             '<label>节点类型<select id="termKind">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + '>' + kind + '</option>'; }).join("") + '</select></label>' +
             '<label>说明<input id="termDescription" value="' + esc(entry.description) + '"></label>' +
           '</div>' +
-          '<label class="check"><input id="termApplyProperties" type="checkbox" ' + (entry.applyProperties ? "checked" : "") + '>点击词条时同时应用属性</label>' +
+          '<h3>共享属性方案</h3>' +
+          '<div class="preset-switcher">' + config.propertyPresets.map(function(item) { return '<button class="' + (item.id === preset.id ? "active" : "") + '" data-preset-id="' + item.id + '">' + esc(item.name) + '</button>'; }).join("") + '</div>' +
+          '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
+          '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击任意词条时应用当前属性方案</label>' +
+          '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
           '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button></div>' +
           '<div class="prop-grid">' +
             prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
@@ -394,14 +414,20 @@
             selectProp("textAlignVertical", "纵向对齐", v.textAlignVertical, enabled.textAlignVertical, [["TOP","Top"],["CENTER","Middle"],["BOTTOM","Bottom"]]) +
             prop("cornerRadius", "圆角", "number", v.cornerRadius, enabled.cornerRadius) +
           '</div>';
-        ["termWord","termLabel","termKind","termDescription","termApplyProperties"].forEach(function(id) {
+        ["termWord","termLabel","termKind","termDescription"].forEach(function(id) {
           document.getElementById(id).onchange = syncTermEditor;
           document.getElementById(id).oninput = syncTermEditor;
         });
-        document.querySelectorAll("[data-prop-key]").forEach(function(input) { input.onchange = syncTermEditor; input.oninput = syncTermEditor; });
-        document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncTermEditor; });
-        document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { setValue("prop-fontSize", btn.dataset.quickFont); syncTermEditor(); }; });
-        document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { setValue("prop-textFill", btn.dataset.quickColor); syncTermEditor(); }; });
+        document.getElementById("applyPropertiesOnRename").onchange = syncPropertyPreset;
+        document.getElementById("presetName").onchange = syncPropertyPreset;
+        document.getElementById("addPresetBtn").onclick = addPropertyPreset;
+        document.getElementById("duplicatePresetBtn").onclick = duplicatePropertyPreset;
+        document.getElementById("deletePresetBtn").onclick = deletePropertyPreset;
+        document.querySelectorAll("[data-preset-id]").forEach(function(btn) { btn.onclick = function() { config.activePropertyPresetId = btn.dataset.presetId; save(); renderTerms(); renderTermEditor(); }; });
+        document.querySelectorAll("[data-prop-key]").forEach(function(input) { input.onchange = syncPropertyPreset; input.oninput = syncPropertyPreset; });
+        document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncPropertyPreset; });
+        document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { setValue("prop-fontSize", btn.dataset.quickFont); syncPropertyPreset(); }; });
+        document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { setValue("prop-textFill", btn.dataset.quickColor); syncPropertyPreset(); }; });
       }
       function prop(key, label, type, value, enabled) {
         return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input id="prop-' + key + '" data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
@@ -420,16 +446,54 @@
         entry.label = value("termLabel");
         entry.kind = value("termKind");
         entry.description = value("termDescription");
-        entry.applyProperties = checked("termApplyProperties");
-        entry.enabled = entry.enabled || {};
-        entry.values = Object.assign({}, defaultValues, entry.values || {});
-        document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { entry.enabled[input.dataset.propEnabled] = input.checked; });
+        save();
+        renderTerms();
+      }
+      function syncPropertyPreset() {
+        var preset = activePreset();
+        if (!preset) return;
+        config.applyPropertiesOnRename = checked("applyPropertiesOnRename");
+        preset.name = value("presetName") || "未命名方案";
+        preset.enabled = preset.enabled || {};
+        preset.values = Object.assign({}, defaultValues, preset.values || {});
+        document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { preset.enabled[input.dataset.propEnabled] = input.checked; });
         document.querySelectorAll("[data-prop-key]").forEach(function(input) {
           var key = input.dataset.propKey;
-          entry.values[key] = input.dataset.propFormat === "percent" ? Number(input.value) / 100 : input.type === "number" ? Number(input.value) : input.value;
+          preset.values[key] = input.dataset.propFormat === "percent" ? Number(input.value) / 100 : input.type === "number" ? Number(input.value) : input.value;
         });
         save();
         renderTerms();
+      }
+      function addPropertyPreset() {
+        var next = JSON.parse(JSON.stringify(activePreset()));
+        next.id = "preset-" + Date.now();
+        next.name = "新属性方案";
+        config.propertyPresets.push(next);
+        config.activePropertyPresetId = next.id;
+        save();
+        renderTerms();
+        renderTermEditor();
+        status("已新增共享属性方案");
+      }
+      function duplicatePropertyPreset() {
+        var next = JSON.parse(JSON.stringify(activePreset()));
+        next.id = "preset-" + Date.now();
+        next.name = next.name + " 副本";
+        config.propertyPresets.push(next);
+        config.activePropertyPresetId = next.id;
+        save();
+        renderTerms();
+        renderTermEditor();
+        status("已复制共享属性方案");
+      }
+      function deletePropertyPreset() {
+        if (config.propertyPresets.length <= 1) { status("至少保留一个属性方案"); return; }
+        config.propertyPresets = config.propertyPresets.filter(function(preset) { return preset.id !== config.activePropertyPresetId; });
+        config.activePropertyPresetId = config.propertyPresets[0].id;
+        save();
+        renderTerms();
+        renderTermEditor();
+        status("已删除共享属性方案");
       }
       function addTerm() {
         var next = term("lex-" + Date.now(), "NewName", "NewName", selectedKind() || "TEXT", "", true, 28);
@@ -526,10 +590,9 @@
         status(provider === "kimi" ? "已切换到 Kimi API 配置" : "已切换到 OpenAI 兼容配置");
       }
       function exportCsv() {
-        var rows = [["word","label","kind","description","applyProperties","fontFamily","fontStyle","fontSize","lineHeightPercent","letterSpacing","textAlignHorizontal","textAlignVertical","textFill","opacityPercent","cornerRadius"]];
+        var rows = [["word","label","kind","description"]];
         config.lexicon.forEach(function(entry) {
-          var v = Object.assign({}, defaultValues, entry.values || {});
-          rows.push([entry.word, entry.label, entry.kind, entry.description, entry.applyProperties ? "TRUE" : "FALSE", v.fontFamily, v.fontStyle, v.fontSize, v.lineHeightPercent, v.letterSpacing, v.textAlignHorizontal, v.textAlignVertical, v.textFill, Math.round(Number(v.opacity || 0) * 100), v.cornerRadius]);
+          rows.push([entry.word, entry.label, entry.kind, entry.description]);
         });
         var csv = rows.map(function(row) { return row.map(csvCell).join(","); }).join("\n");
         setValue("ioBox", csv);
@@ -545,9 +608,7 @@
         header.forEach(function(name, i) { index[name] = i; });
         config.lexicon = rows.filter(function(row) { return row[index.word] || row[0]; }).map(function(row, i) {
           var word = row[index.word] || row[0] || "Node";
-          var apply = String(row[index.applyProperties] || "").toUpperCase() === "TRUE";
-          var opacityPercent = row[index.opacityPercent] || (index.opacity == null ? "" : String(Number(row[index.opacity] || 1) * 100));
-          return { id: "lex-" + Date.now() + "-" + i, word: word, label: row[index.label] || word, kind: row[index.kind] || "TEXT", prefix: word, description: row[index.description] || "", applyProperties: apply, enabled: { fontFamily: apply, fontStyle: apply, fontSize: apply, lineHeightPercent: apply, letterSpacing: apply, textAlignHorizontal: apply, textAlignVertical: apply, textFill: apply, opacity: apply, cornerRadius: apply }, values: Object.assign({}, defaultValues, { fontFamily: row[index.fontFamily] || "Inter", fontStyle: row[index.fontStyle] || "Regular", fontSize: Number(row[index.fontSize] || 28), lineHeightPercent: Number(row[index.lineHeightPercent] || row[index.lineHeightPx] || 150), letterSpacing: Number(row[index.letterSpacing] || 0), textAlignHorizontal: row[index.textAlignHorizontal] || "CENTER", textAlignVertical: row[index.textAlignVertical] || "CENTER", textFill: row[index.textFill] || "#FFFFFF", opacity: Number(opacityPercent || 100) / 100, cornerRadius: Number(row[index.cornerRadius] || 0) }) };
+          return { id: "lex-" + Date.now() + "-" + i, word: word, label: row[index.label] || word, kind: row[index.kind] || "TEXT", prefix: word, description: row[index.description] || "" };
         });
         activeTermId = config.lexicon[0] ? config.lexicon[0].id : "";
         save();

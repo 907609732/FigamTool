@@ -170,10 +170,16 @@ function normalizeConfig(input: unknown): PluginConfig {
   if (!normalizedTranslateSettings.secretKey && localTestConfig.translateSettings) {
     Object.assign(normalizedTranslateSettings, localTestConfig.translateSettings);
   }
+  const propertyPresets = normalizePropertyPresets(partial.propertyPresets);
+  const activePropertyPresetId = propertyPresets.some((preset) => preset.id === partial.activePropertyPresetId)
+    ? partial.activePropertyPresetId!
+    : propertyPresets[0].id;
   return {
     namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
     lexicon: normalizeLexicon(partial.lexicon),
-    propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
+    propertyPresets,
+    activePropertyPresetId,
+    applyPropertiesOnRename: partial.applyPropertiesOnRename ?? true,
     ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
     aiSettings: normalizedAiSettings,
     translateSettings: normalizedTranslateSettings
@@ -185,20 +191,13 @@ function normalizeLexicon(input: unknown): LexiconEntry[] {
   const normalized: LexiconEntry[] = source.map((entry, index) => {
     const partial = entry as Partial<LexiconEntry>;
     const fallback = defaultConfig.lexicon[index] ?? defaultConfig.lexicon[defaultConfig.lexicon.length - 1];
-    const values = Object.assign({}, partial.values || {});
-    if (values.lineHeightPercent == null) values.lineHeightPercent = 150;
-    if (values.textAlignHorizontal == null) values.textAlignHorizontal = "CENTER";
-    if (values.textAlignVertical == null) values.textAlignVertical = "CENTER";
     return {
       id: partial.id || `lex-${index + 1}`,
       word: partial.word || partial.prefix || partial.label || fallback.word,
       label: partial.label || partial.word || partial.prefix || fallback.label,
       kind: partial.kind || fallback.kind,
       prefix: partial.prefix || partial.word || fallback.prefix,
-      description: partial.description || "",
-      applyProperties: partial.applyProperties ?? false,
-      enabled: partial.enabled || {},
-      values
+      description: partial.description || ""
     };
   });
   const existingIds = new Set(normalized.map((entry) => entry.id));
@@ -206,6 +205,21 @@ function normalizeLexicon(input: unknown): LexiconEntry[] {
     if (!existingIds.has(entry.id)) normalized.push(entry);
   }
   return normalized;
+}
+
+function normalizePropertyPresets(input: unknown): PropertyPreset[] {
+  const source = Array.isArray(input) && input.length ? input : defaultConfig.propertyPresets;
+  const fallback = defaultConfig.propertyPresets[0];
+  return source.map((preset, index) => {
+    const partial = preset as Partial<PropertyPreset>;
+    return {
+      id: partial.id || `preset-${index + 1}`,
+      name: partial.name || `属性方案 ${index + 1}`,
+      targetKinds: Array.isArray(partial.targetKinds) && partial.targetKinds.length ? partial.targetKinds : fallback.targetKinds,
+      enabled: Object.assign({}, partial.enabled || {}),
+      values: Object.assign({}, fallback.values, partial.values || {})
+    };
+  });
 }
 
 async function ensureCurrentPageLoaded() {
@@ -334,12 +348,14 @@ async function applyLexiconEntry(
   const baseName = safeName(entry.word || entry.prefix || entry.label);
   let renamed = 0;
   let properties = 0;
-  const preset = lexiconEntryToPreset(entry);
+  const preset = normalized.applyPropertiesOnRename
+    ? normalized.propertyPresets.find((item) => item.id === normalized.activePropertyPresetId) ?? normalized.propertyPresets[0]
+    : null;
   for (let index = 0; index < targets.length; index += 1) {
     const node = targets[index];
     node.name = targets.length > 1 ? `${baseName}_${String(index + 1).padStart(2, "0")}` : baseName;
     renamed += 1;
-    if (entry.applyProperties && preset) {
+    if (preset) {
       const didChange = await applyPresetToNode(node, preset);
       if (didChange) properties += 1;
     }
@@ -663,7 +679,7 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
   if (!settings.appId || !settings.secretKey) throw new Error("请先在设置里填写百度翻译 AppID 和密钥");
   const salt = String(Date.now());
   const sign = md5(`${settings.appId}${text}${salt}${settings.secretKey}`);
-  const params = new URLSearchParams({
+  const query = encodeQuery({
     q: text,
     from: settings.from || "zh",
     to: settings.to || "en",
@@ -671,7 +687,7 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
     salt,
     sign
   });
-  const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${params.toString()}`);
+  const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${query}`);
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);
   const payload = await response.json();
   if (payload?.error_code) throw new Error(`百度翻译失败：${payload.error_code} ${payload.error_msg || ""}`.trim());
@@ -682,16 +698,10 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
   return translated;
 }
 
-function lexiconEntryToPreset(entry: LexiconEntry): PropertyPreset | null {
-  if (!entry.applyProperties) return null;
-  const values = Object.assign({}, defaultConfig.propertyPresets[0].values, entry.values ?? {});
-  return {
-    id: `${entry.id}-preset`,
-    name: entry.label || entry.word,
-    targetKinds: [entry.kind],
-    enabled: entry.enabled ?? {},
-    values
-  };
+function encodeQuery(values: Record<string, string>): string {
+  return Object.keys(values)
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(values[key])}`)
+    .join("&");
 }
 
 async function applyPresetToNode(node: SceneNode, preset: PropertyPreset): Promise<boolean> {

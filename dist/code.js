@@ -170,8 +170,8 @@
     propertyPresets: [
       {
         id: "ue-text-center",
-        name: "UE Text Center",
-        targetKinds: ["TEXT"],
+        name: "\u6587\u672C 28 \u5C45\u4E2D",
+        targetKinds: ["TEXT", "IMAGE", "COMPONENT", "FRAME", "SHAPE", "NODE"],
         enabled: {
           opacity: true,
           fontSize: true,
@@ -206,6 +206,8 @@
         }
       }
     ],
+    activePropertyPresetId: "ue-text-center",
+    applyPropertiesOnRename: true,
     ueDefaults: {
       mode: "preserve",
       spacing: 24,
@@ -347,7 +349,7 @@
     await figma.clientStorage.setAsync(CONFIG_KEY, normalizeConfig(config));
   }
   function normalizeConfig(input) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     if (!input || typeof input !== "object") return defaultConfig;
     const partial = input;
     const ueDefaults = (_a = partial.ueDefaults) != null ? _a : {};
@@ -369,10 +371,14 @@
     if (!normalizedTranslateSettings.secretKey && localTestConfig.translateSettings) {
       Object.assign(normalizedTranslateSettings, localTestConfig.translateSettings);
     }
+    const propertyPresets = normalizePropertyPresets(partial.propertyPresets);
+    const activePropertyPresetId = propertyPresets.some((preset) => preset.id === partial.activePropertyPresetId) ? partial.activePropertyPresetId : propertyPresets[0].id;
     return {
       namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
       lexicon: normalizeLexicon(partial.lexicon),
-      propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
+      propertyPresets,
+      activePropertyPresetId,
+      applyPropertiesOnRename: (_e = partial.applyPropertiesOnRename) != null ? _e : true,
       ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
       aiSettings: normalizedAiSettings,
       translateSettings: normalizedTranslateSettings
@@ -381,23 +387,16 @@
   function normalizeLexicon(input) {
     const source = Array.isArray(input) ? input : defaultConfig.lexicon;
     const normalized = source.map((entry, index) => {
-      var _a, _b;
+      var _a;
       const partial = entry;
       const fallback = (_a = defaultConfig.lexicon[index]) != null ? _a : defaultConfig.lexicon[defaultConfig.lexicon.length - 1];
-      const values = Object.assign({}, partial.values || {});
-      if (values.lineHeightPercent == null) values.lineHeightPercent = 150;
-      if (values.textAlignHorizontal == null) values.textAlignHorizontal = "CENTER";
-      if (values.textAlignVertical == null) values.textAlignVertical = "CENTER";
       return {
         id: partial.id || `lex-${index + 1}`,
         word: partial.word || partial.prefix || partial.label || fallback.word,
         label: partial.label || partial.word || partial.prefix || fallback.label,
         kind: partial.kind || fallback.kind,
         prefix: partial.prefix || partial.word || fallback.prefix,
-        description: partial.description || "",
-        applyProperties: (_b = partial.applyProperties) != null ? _b : false,
-        enabled: partial.enabled || {},
-        values
+        description: partial.description || ""
       };
     });
     const existingIds = new Set(normalized.map((entry) => entry.id));
@@ -405,6 +404,20 @@
       if (!existingIds.has(entry.id)) normalized.push(entry);
     }
     return normalized;
+  }
+  function normalizePropertyPresets(input) {
+    const source = Array.isArray(input) && input.length ? input : defaultConfig.propertyPresets;
+    const fallback = defaultConfig.propertyPresets[0];
+    return source.map((preset, index) => {
+      const partial = preset;
+      return {
+        id: partial.id || `preset-${index + 1}`,
+        name: partial.name || `\u5C5E\u6027\u65B9\u6848 ${index + 1}`,
+        targetKinds: Array.isArray(partial.targetKinds) && partial.targetKinds.length ? partial.targetKinds : fallback.targetKinds,
+        enabled: Object.assign({}, partial.enabled || {}),
+        values: Object.assign({}, fallback.values, partial.values || {})
+      };
+    });
   }
   async function ensureCurrentPageLoaded() {
     await figma.currentPage.loadAsync();
@@ -509,6 +522,7 @@
     return changed;
   }
   async function applyLexiconEntry(entryId, options, config) {
+    var _a;
     const normalized = normalizeConfig(config);
     const entry = normalized.lexicon.find((item) => item.id === entryId);
     if (!entry) throw new Error("\u627E\u4E0D\u5230\u8FD9\u4E2A\u8BCD\u5E93\u8BCD\u6761");
@@ -517,12 +531,12 @@
     const baseName = safeName(entry.word || entry.prefix || entry.label);
     let renamed = 0;
     let properties = 0;
-    const preset = lexiconEntryToPreset(entry);
+    const preset = normalized.applyPropertiesOnRename ? (_a = normalized.propertyPresets.find((item) => item.id === normalized.activePropertyPresetId)) != null ? _a : normalized.propertyPresets[0] : null;
     for (let index = 0; index < targets.length; index += 1) {
       const node = targets[index];
       node.name = targets.length > 1 ? `${baseName}_${String(index + 1).padStart(2, "0")}` : baseName;
       renamed += 1;
-      if (entry.applyProperties && preset) {
+      if (preset) {
         const didChange = await applyPresetToNode(node, preset);
         if (didChange) properties += 1;
       }
@@ -796,7 +810,7 @@
     if (!settings.appId || !settings.secretKey) throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u586B\u5199\u767E\u5EA6\u7FFB\u8BD1 AppID \u548C\u5BC6\u94A5");
     const salt = String(Date.now());
     const sign = md5(`${settings.appId}${text}${salt}${settings.secretKey}`);
-    const params = new URLSearchParams({
+    const query = encodeQuery({
       q: text,
       from: settings.from || "zh",
       to: settings.to || "en",
@@ -804,7 +818,7 @@
       salt,
       sign
     });
-    const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${params.toString()}`);
+    const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${query}`);
     if (!response.ok) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
     const payload = await response.json();
     if (payload == null ? void 0 : payload.error_code) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF1A${payload.error_code} ${payload.error_msg || ""}`.trim());
@@ -812,17 +826,8 @@
     if (!translated.length || !translated.some((item) => item.trim())) throw new Error("\u767E\u5EA6\u7FFB\u8BD1\u6CA1\u6709\u8FD4\u56DE\u6709\u6548\u7ED3\u679C");
     return translated;
   }
-  function lexiconEntryToPreset(entry) {
-    var _a, _b;
-    if (!entry.applyProperties) return null;
-    const values = Object.assign({}, defaultConfig.propertyPresets[0].values, (_a = entry.values) != null ? _a : {});
-    return {
-      id: `${entry.id}-preset`,
-      name: entry.label || entry.word,
-      targetKinds: [entry.kind],
-      enabled: (_b = entry.enabled) != null ? _b : {},
-      values
-    };
+  function encodeQuery(values) {
+    return Object.keys(values).map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(values[key])}`).join("&");
   }
   async function applyPresetToNode(node, preset) {
     const { enabled, values } = preset;
