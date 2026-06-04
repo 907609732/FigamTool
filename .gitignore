@@ -1,2 +1,5 @@
 node_modules/
 .DS_Store
+.figmatool-test-config.json
+dist-local/
+manifest.local.json

@@ -217,6 +217,7 @@
     aiSettings: {
       enabled: false,
       provider: "openai-compatible",
+      providerKeys: {},
       baseUrl: "https://api.openai.com/v1/chat/completions",
       apiKey: "",
       model: "gpt-4.1-mini",
@@ -230,6 +231,9 @@
       to: "en"
     }
   };
+  var localTestConfig = {};
+  if (localTestConfig.aiSettings) Object.assign(defaultConfig.aiSettings, localTestConfig.aiSettings);
+  if (localTestConfig.translateSettings) Object.assign(defaultConfig.translateSettings, localTestConfig.translateSettings);
 
   // src/code.ts
   var CONFIG_KEY = "ai-auto-namer-config";
@@ -343,19 +347,35 @@
     await figma.clientStorage.setAsync(CONFIG_KEY, normalizeConfig(config));
   }
   function normalizeConfig(input) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     if (!input || typeof input !== "object") return defaultConfig;
     const partial = input;
     const ueDefaults = (_a = partial.ueDefaults) != null ? _a : {};
     const aiSettings = (_b = partial.aiSettings) != null ? _b : {};
     const translateSettings = (_c = partial.translateSettings) != null ? _c : {};
+    const normalizedAiSettings = Object.assign({}, defaultConfig.aiSettings, aiSettings);
+    const normalizedTranslateSettings = Object.assign({}, defaultConfig.translateSettings, translateSettings);
+    if (!normalizedAiSettings.apiKey && localTestConfig.aiSettings) Object.assign(normalizedAiSettings, localTestConfig.aiSettings);
+    const normalizedProviderKeys = Object.assign(
+      {},
+      defaultConfig.aiSettings.providerKeys,
+      aiSettings.providerKeys,
+      (_d = localTestConfig.aiSettings) == null ? void 0 : _d.providerKeys
+    );
+    normalizedAiSettings.providerKeys = normalizedProviderKeys;
+    if (normalizedAiSettings.apiKey && normalizedAiSettings.provider) {
+      normalizedProviderKeys[normalizedAiSettings.provider] = normalizedAiSettings.apiKey;
+    }
+    if (!normalizedTranslateSettings.secretKey && localTestConfig.translateSettings) {
+      Object.assign(normalizedTranslateSettings, localTestConfig.translateSettings);
+    }
     return {
       namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
       lexicon: normalizeLexicon(partial.lexicon),
       propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
       ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
-      aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings),
-      translateSettings: Object.assign({}, defaultConfig.translateSettings, translateSettings)
+      aiSettings: normalizedAiSettings,
+      translateSettings: normalizedTranslateSettings
     };
   }
   function normalizeLexicon(input) {

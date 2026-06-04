@@ -1,10 +1,11 @@
 {
   "name": "figma-ai-auto-namer",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:test": "node scripts/build.mjs --test-config",
     "typecheck": "tsc --noEmit",
     "dev": "node scripts/build.mjs --watch"
   },

@@ -70,9 +70,12 @@ export interface UeLayoutOptions {
   maxGridItemSize: number;
 }
 
+export type AiProvider = "openai-compatible" | "kimi";
+
 export interface AiSettings {
   enabled: boolean;
-  provider?: "openai-compatible" | "kimi";
+  provider?: AiProvider;
+  providerKeys?: Partial<Record<AiProvider, string>>;
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -107,6 +110,8 @@ export interface PluginConfig {
   aiSettings: AiSettings;
   translateSettings: TranslateSettings;
 }
+
+declare const __LOCAL_TEST_CONFIG__: Partial<PluginConfig> | null;
 
 export interface SelectionSummary {
   count: number;
@@ -336,6 +341,7 @@ export const defaultConfig: PluginConfig = {
   aiSettings: {
     enabled: false,
     provider: "openai-compatible",
+    providerKeys: {},
     baseUrl: "https://api.openai.com/v1/chat/completions",
     apiKey: "",
     model: "gpt-4.1-mini",
@@ -350,3 +356,7 @@ export const defaultConfig: PluginConfig = {
     to: "en"
   }
 };
+
+export const localTestConfig: Partial<PluginConfig> = __LOCAL_TEST_CONFIG__ ?? {};
+if (localTestConfig.aiSettings) Object.assign(defaultConfig.aiSettings, localTestConfig.aiSettings);
+if (localTestConfig.translateSettings) Object.assign(defaultConfig.translateSettings, localTestConfig.translateSettings);

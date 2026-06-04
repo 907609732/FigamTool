@@ -1,0 +1,16 @@
+{
+  "aiSettings": {
+    "enabled": true,
+    "provider": "kimi",
+    "baseUrl": "https://api.moonshot.cn/v1/chat/completions",
+    "apiKey": "YOUR_KIMI_API_KEY",
+    "model": "moonshot-v1-8k"
+  },
+  "translateSettings": {
+    "provider": "baidu",
+    "appId": "YOUR_BAIDU_APP_ID",
+    "secretKey": "YOUR_BAIDU_SECRET_KEY",
+    "from": "zh",
+    "to": "en"
+  }
+}

@@ -64,6 +64,11 @@
       .prop-line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
       .muted { color: var(--figma-color-text-secondary, #666); }
       .settings-card { display: grid; gap: 8px; }
+      .setting-field { display: grid; grid-template-columns: minmax(0, 1fr) 28px; gap: 6px; align-items: end; }
+      .setting-field > label { min-width: 0; }
+      .setting-help { width: 28px; min-width: 28px; min-height: 28px; padding: 0; font-size: 14px; font-weight: 700; }
+      .setting-check { align-items: center; }
+      .setting-check .setting-help { align-self: center; }
       .modal-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(0, 0, 0, .55); }
       .modal-card { width: min(460px, 100%); max-height: calc(100vh - 36px); overflow: auto; border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 14px; background: var(--figma-color-bg, #fff); }
       .modal-card h2 { margin-top: 0; font-size: 14px; text-transform: none; }
@@ -165,14 +170,14 @@
         <h2>百度翻译</h2>
         <div class="grid">
           <div class="two grid">
-            <label>App ID<input id="baiduAppId"></label>
-            <label>密钥<input id="baiduSecretKey" type="password"></label>
+            <div class="setting-field"><label>App ID<input id="baiduAppId"></label><button class="setting-help" data-setting-help="百度翻译 App ID" data-setting-description="百度翻译开放平台分配的应用标识，用于识别调用方。" title="百度翻译开放平台分配的应用标识">？</button></div>
+            <div class="setting-field"><label>密钥<input id="baiduSecretKey" type="password"></label><button class="setting-help" data-setting-help="百度翻译密钥" data-setting-description="与 App ID 配套的百度翻译密钥，用于生成接口签名。请勿上传到公开仓库。" title="用于生成百度翻译接口签名，请妥善保管">？</button></div>
           </div>
           <div class="two grid">
-            <label>From<input id="baiduFrom" placeholder="zh"></label>
-            <label>To<input id="baiduTo" placeholder="en"></label>
+            <div class="setting-field"><label>From<input id="baiduFrom" placeholder="zh"></label><button class="setting-help" data-setting-help="源语言 From" data-setting-description="输入文字的语言代码。中文通常填写 zh，自动识别可填写 auto。" title="输入文字的语言代码">？</button></div>
+            <div class="setting-field"><label>To<input id="baiduTo" placeholder="en"></label><button class="setting-help" data-setting-help="目标语言 To" data-setting-description="翻译结果的语言代码。节点英文命名通常填写 en。" title="翻译结果的语言代码">？</button></div>
           </div>
-          <button id="saveTranslateBtn">保存百度翻译</button>
+          <button id="saveTranslateBtn" title="将百度翻译设置保存到当前 Figma 插件的本机存储">保存百度翻译</button>
         </div>
         <h2>词库方案</h2>
         <div class="actions">
@@ -189,12 +194,13 @@
 
         <h2>AI 设置</h2>
         <div class="grid">
-          <label class="check"><input id="aiEnabled" type="checkbox">启用 AI</label>
-          <div class="actions"><button id="openAiPresetBtn">OpenAI兼容</button><button id="kimiPresetBtn">Kimi API</button><button id="saveAiBtn">保存AI</button></div>
-          <label>Base URL<input id="aiBaseUrl"></label>
-          <label>Model<input id="aiModel"></label>
-          <label>API Key<input id="aiKey" type="password"></label>
-          <label>Prompt Template<textarea id="aiPrompt"></textarea></label>
+          <div class="setting-field setting-check"><label class="check"><input id="aiEnabled" type="checkbox">启用 AI</label><button class="setting-help" data-setting-help="启用 AI" data-setting-description="开启后，插件可以调用所选 AI 服务生成节点命名建议。" title="允许调用 AI 生成节点命名建议">？</button></div>
+          <div class="setting-field"><label>AI 服务<select id="aiProvider"><option value="openai-compatible">OpenAI 兼容 API</option><option value="kimi">Kimi API</option></select></label><button class="setting-help" data-setting-help="AI 服务" data-setting-description="选择要使用的接口类型。切换后会自动填入对应的 Base URL、模型和推荐提示词。" title="选择 OpenAI 兼容 API 或 Kimi API">？</button></div>
+          <div class="setting-field"><label>Base URL<input id="aiBaseUrl"></label><button class="setting-help" data-setting-help="Base URL" data-setting-description="AI 聊天补全接口的完整请求地址。使用代理或兼容服务时需要按服务商说明修改。" title="AI 接口的完整请求地址">？</button></div>
+          <div class="setting-field"><label>Model<input id="aiModel"></label><button class="setting-help" data-setting-help="Model" data-setting-description="调用的 AI 模型名称，必须是当前 API Key 有权限使用的模型。" title="要调用的 AI 模型名称">？</button></div>
+          <div class="setting-field"><label>API Key<input id="aiKey" type="password"></label><button class="setting-help" data-setting-help="API Key" data-setting-description="AI 服务的访问密钥，仅保存在插件本机存储中。请勿上传到公开仓库。" title="AI 服务访问密钥，请妥善保管">？</button></div>
+          <div class="setting-field"><label>Prompt Template<textarea id="aiPrompt"></textarea></label><button class="setting-help" data-setting-help="Prompt Template" data-setting-description="发送给 AI 的命名规则说明。可以在这里约束输出语言、格式和命名风格。" title="发送给 AI 的命名规则说明">？</button></div>
+          <button id="saveAiBtn" title="将 AI 设置保存到当前 Figma 插件的本机存储">保存 AI 设置</button>
         </div>
       </section>
 
@@ -224,6 +230,13 @@
           <button id="closeVariantHelpBtn">关闭</button>
         </div>
       </div>
+      <div id="settingHelp" class="modal-overlay" hidden>
+        <div class="modal-card">
+          <h2 id="settingHelpTitle">设置说明</h2>
+          <p id="settingHelpDescription"></p>
+          <button id="closeSettingHelpBtn">关闭</button>
+        </div>
+      </div>
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
@@ -231,6 +244,7 @@
       var config = null;
       var selection = { count: 0, roots: [] };
       var activeTermId = "";
+      var localTestConfig = __LOCAL_TEST_CONFIG__;
 
       function defaultConfig() {
         return {
@@ -270,7 +284,7 @@
           ],
           propertyPresets: [{ id: "ue-text-center", name: "UE Text Center", targetKinds: ["TEXT"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
           ueDefaults: { mode: "preserve", spacing: 24, preserveSize: true, includeHidden: false, includeLocked: false, maxGridItemSize: 160 },
-          aiSettings: { enabled: false, provider: "openai-compatible", baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." },
+          aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." },
           translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en" }
         };
       }
@@ -314,10 +328,13 @@
         var existing = {};
         config.lexicon.forEach(function(entry) { existing[entry.id] = true; });
         fallback.lexicon.forEach(function(entry) { if (!existing[entry.id]) config.lexicon.push(JSON.parse(JSON.stringify(entry))); });
-        if (!config.aiSettings) config.aiSettings = fallback.aiSettings;
+        config.aiSettings = Object.assign({}, fallback.aiSettings, config.aiSettings || {});
+        if (!config.aiSettings.apiKey && localTestConfig && localTestConfig.aiSettings) Object.assign(config.aiSettings, localTestConfig.aiSettings);
         if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible";
-        if (!config.translateSettings) config.translateSettings = fallback.translateSettings;
-        config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings);
+        config.aiSettings.providerKeys = Object.assign({}, fallback.aiSettings.providerKeys, config.aiSettings.providerKeys || {}, localTestConfig && localTestConfig.aiSettings && localTestConfig.aiSettings.providerKeys || {});
+        if (config.aiSettings.apiKey) config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey;
+        config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings || {});
+        if (!config.translateSettings.secretKey && localTestConfig && localTestConfig.translateSettings) Object.assign(config.translateSettings, localTestConfig.translateSettings);
         if (!config.ueDefaults) config.ueDefaults = fallback.ueDefaults;
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
       }
@@ -445,6 +462,7 @@
       }
       function renderAiAndUe() {
         setChecked("aiEnabled", config.aiSettings.enabled);
+        setValue("aiProvider", config.aiSettings.provider || "openai-compatible");
         setValue("aiBaseUrl", config.aiSettings.baseUrl);
         setValue("aiModel", config.aiSettings.model);
         setValue("aiKey", config.aiSettings.apiKey);
@@ -460,7 +478,7 @@
         setChecked("ueIncludeHidden", config.ueDefaults.includeHidden);
         setChecked("ueIncludeLocked", config.ueDefaults.includeLocked);
       }
-      function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.apiKey = value("aiKey"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
+      function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.provider = value("aiProvider"); config.aiSettings.providerKeys = config.aiSettings.providerKeys || {}; config.aiSettings.apiKey = value("aiKey"); config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey; config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
       function syncTranslate() { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; save(); status("百度翻译配置已保存"); }
       function translateAndRename() {
         var text = value("translateText").trim();
@@ -481,7 +499,18 @@
       function showVariantHelp(show) {
         document.getElementById("variantHelp").hidden = !show;
       }
+      function showSettingHelp(title, description) {
+        document.getElementById("settingHelpTitle").textContent = title;
+        document.getElementById("settingHelpDescription").textContent = description;
+        document.getElementById("settingHelp").hidden = false;
+      }
+      function hideSettingHelp() {
+        document.getElementById("settingHelp").hidden = true;
+      }
       function applyAiPreset(provider) {
+        var previousProvider = config.aiSettings.provider || "openai-compatible";
+        config.aiSettings.providerKeys = config.aiSettings.providerKeys || {};
+        config.aiSettings.providerKeys[previousProvider] = value("aiKey") || config.aiSettings.apiKey || "";
         config.aiSettings.provider = provider;
         if (provider === "kimi") {
           config.aiSettings.baseUrl = "https://api.moonshot.cn/v1/chat/completions";
@@ -491,6 +520,7 @@
           config.aiSettings.baseUrl = "https://api.openai.com/v1/chat/completions";
           config.aiSettings.model = "gpt-4.1-mini";
         }
+        config.aiSettings.apiKey = config.aiSettings.providerKeys[provider] || "";
         renderAiAndUe();
         save();
         status(provider === "kimi" ? "已切换到 Kimi API 配置" : "已切换到 OpenAI 兼容配置");
@@ -583,6 +613,14 @@
       document.getElementById("variantHelpBtn").onclick = function() { showVariantHelp(true); };
       document.getElementById("closeVariantHelpBtn").onclick = function() { showVariantHelp(false); };
       document.getElementById("variantHelp").onclick = function(event) { if (event.target.id === "variantHelp") showVariantHelp(false); };
+      document.querySelectorAll("[data-setting-help]").forEach(function(btn) {
+        btn.onclick = function(event) {
+          event.preventDefault();
+          showSettingHelp(btn.dataset.settingHelp, btn.dataset.settingDescription);
+        };
+      });
+      document.getElementById("closeSettingHelpBtn").onclick = hideSettingHelp;
+      document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
       document.getElementById("translateBtn").onclick = translateAndRename;
       document.getElementById("createUeBtn").onclick = function() { config.ueDefaults = ueOptions(); save(); post({ type: "CREATE_UE_FRAME", options: config.ueDefaults, config: config }); };
@@ -592,10 +630,9 @@
       document.getElementById("importJsonBtn").onclick = importJson;
       document.getElementById("writeProjectBtn").onclick = function() { post({ type: "WRITE_PROJECT_CONFIG", config: config }); };
       document.getElementById("resetBtn").onclick = function() { config.lexicon = defaultConfig().lexicon; activeTermId = config.lexicon[0].id; save(); renderTerms(); renderTermEditor(); status("已恢复默认词库"); };
-      document.getElementById("openAiPresetBtn").onclick = function() { applyAiPreset("openai-compatible"); };
-      document.getElementById("kimiPresetBtn").onclick = function() { applyAiPreset("kimi"); };
       document.getElementById("saveAiBtn").onclick = syncAi;
       document.getElementById("saveTranslateBtn").onclick = syncTranslate;
+      document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
       ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
       document.getElementById("resizeGrip").onmousedown = function(event) {

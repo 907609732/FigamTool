@@ -1,5 +1,6 @@
 import {
   defaultConfig,
+  localTestConfig,
   type AiSettings,
   type LexiconEntry,
   type NodeKind,
@@ -151,15 +152,31 @@ function normalizeConfig(input: unknown): PluginConfig {
   if (!input || typeof input !== "object") return defaultConfig;
   const partial = input as Partial<PluginConfig>;
   const ueDefaults = partial.ueDefaults ?? {};
-  const aiSettings = partial.aiSettings ?? {};
-  const translateSettings = partial.translateSettings ?? {};
+  const aiSettings: Partial<AiSettings> = partial.aiSettings ?? {};
+  const translateSettings: Partial<TranslateSettings> = partial.translateSettings ?? {};
+  const normalizedAiSettings = Object.assign({}, defaultConfig.aiSettings, aiSettings);
+  const normalizedTranslateSettings = Object.assign({}, defaultConfig.translateSettings, translateSettings);
+  if (!normalizedAiSettings.apiKey && localTestConfig.aiSettings) Object.assign(normalizedAiSettings, localTestConfig.aiSettings);
+  const normalizedProviderKeys = Object.assign(
+    {},
+    defaultConfig.aiSettings.providerKeys,
+    aiSettings.providerKeys,
+    localTestConfig.aiSettings?.providerKeys
+  );
+  normalizedAiSettings.providerKeys = normalizedProviderKeys;
+  if (normalizedAiSettings.apiKey && normalizedAiSettings.provider) {
+    normalizedProviderKeys[normalizedAiSettings.provider] = normalizedAiSettings.apiKey;
+  }
+  if (!normalizedTranslateSettings.secretKey && localTestConfig.translateSettings) {
+    Object.assign(normalizedTranslateSettings, localTestConfig.translateSettings);
+  }
   return {
     namingRules: Array.isArray(partial.namingRules) ? partial.namingRules : defaultConfig.namingRules,
     lexicon: normalizeLexicon(partial.lexicon),
     propertyPresets: Array.isArray(partial.propertyPresets) ? partial.propertyPresets : defaultConfig.propertyPresets,
     ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
-    aiSettings: Object.assign({}, defaultConfig.aiSettings, aiSettings),
-    translateSettings: Object.assign({}, defaultConfig.translateSettings, translateSettings)
+    aiSettings: normalizedAiSettings,
+    translateSettings: normalizedTranslateSettings
   };
 }
 
