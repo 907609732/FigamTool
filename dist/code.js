@@ -246,7 +246,7 @@
     try {
       post({ type: "SELECTION", selection: await getSelectionSummary() });
     } catch (error) {
-      post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+      post({ type: "ERROR", message: errorMessage(error) });
     }
   });
   figma.ui.onmessage = async (message) => {
@@ -331,7 +331,7 @@
         figma.notify(`\u5DF2\u751F\u6210 ${created.name}`);
       }
     } catch (error) {
-      post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+      post({ type: "ERROR", message: errorMessage(error) });
     }
   };
   async function initialize() {
@@ -599,7 +599,7 @@
       for (const clone of clones) {
         if (!clone.removed) clone.remove();
       }
-      throw new Error(`\u5236\u4F5C\u53D8\u4F53\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`\u5236\u4F5C\u53D8\u4F53\u5931\u8D25\uFF1A${errorMessage(error)}`);
     }
   }
   function variantDefinitions(mode) {
@@ -646,7 +646,8 @@
     const candidates = collectAutoNameCandidates(root);
     const originalFrameName = root.name.trim() || "Frame";
     const sources = [originalFrameName, ...candidates.map((candidate) => candidate.source)];
-    const translations = await translateSources(sources, normalized.translateSettings);
+    const translationResult = await translateSources(sources, normalized.translateSettings);
+    const translations = translationResult.translated;
     const frameTranslation = (_a = translations.get(originalFrameName)) != null ? _a : originalFrameName;
     root.name = buildAutoFrameName(figma.root.name, frameTranslation, root.width, root.height);
     const cleanup = cleanGroupsAndMasks(root);
@@ -672,6 +673,7 @@
       }
     }
     figma.currentPage.selection = [root];
+    if (translationResult.warning) figma.notify(translationResult.warning);
     return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
   }
   function buildAutoFrameName(projectName, translatedFrameName, width, height) {
@@ -758,10 +760,17 @@
     const unique = Array.from(new Set(sources));
     const translated = new Map(unique.map((source) => [source, source]));
     const chinese = unique.filter(containsChinese);
-    if (!chinese.length) return translated;
-    if (!settings.appId || !settings.secretKey) throw new Error("\u753B\u677F\u4E2D\u6709\u4E2D\u6587\u540D\u79F0\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u586B\u5199\u767E\u5EA6\u7FFB\u8BD1 AppID \u548C\u5BC6\u94A5");
+    if (!chinese.length) return { translated };
+    if (!settings.appId || !settings.secretKey) {
+      return { translated, warning: "\u672A\u914D\u7F6E\u767E\u5EA6\u7FFB\u8BD1\uFF0C\u5DF2\u7528\u539F\u540D\u79F0\u7EE7\u7EED\u6574\u7406" };
+    }
     for (const batch of translationBatches(chinese)) {
-      const results = await requestBaiduTranslationResults(batch.join("\n"), settings);
+      let results;
+      try {
+        results = await requestBaiduTranslationResults(batch.join("\n"), settings);
+      } catch (error) {
+        return { translated, warning: `\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF0C\u5DF2\u7528\u539F\u540D\u79F0\u7EE7\u7EED\u6574\u7406\uFF1A${errorMessage(error)}` };
+      }
       if (results.length === batch.length) {
         batch.forEach((source, index) => translated.set(source, results[index] || source));
         continue;
@@ -772,11 +781,15 @@
         continue;
       }
       for (const source of batch) {
-        const single = await requestBaiduTranslationResults(source, settings);
-        translated.set(source, single.join(" ") || source);
+        try {
+          const single = await requestBaiduTranslationResults(source, settings);
+          translated.set(source, single.join(" ") || source);
+        } catch (error) {
+          return { translated, warning: `\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF0C\u5DF2\u7528\u90E8\u5206\u7FFB\u8BD1\u7ED3\u679C\u7EE7\u7EED\u6574\u7406\uFF1A${errorMessage(error)}` };
+        }
       }
     }
-    return translated;
+    return { translated };
   }
   function translationBatches(sources) {
     const batches = [];
@@ -818,7 +831,12 @@
       salt,
       sign
     });
-    const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${query}`);
+    let response;
+    try {
+      response = await fetch(`https://fanyi-api.baidu.com/api/trans/vip/translate?${query}`);
+    } catch (error) {
+      throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A${errorMessage(error)}`);
+    }
     if (!response.ok) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
     const payload = await response.json();
     if (payload == null ? void 0 : payload.error_code) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF1A${payload.error_code} ${payload.error_msg || ""}`.trim());
@@ -828,6 +846,21 @@
   }
   function encodeQuery(values) {
     return Object.keys(values).map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(values[key])}`).join("&");
+  }
+  function errorMessage(error) {
+    if (error instanceof Error) return error.message || error.name;
+    if (typeof error === "string") return error;
+    if (error && typeof error === "object") {
+      const record = error;
+      const message = record.message || record.error || record.reason || record.statusText;
+      if (typeof message === "string" && message.trim()) return message;
+      try {
+        const json = JSON.stringify(error);
+        if (json && json !== "{}") return json;
+      } catch (e) {
+      }
+    }
+    return String(error);
   }
   async function applyPresetToNode(node, preset) {
     const { enabled, values } = preset;

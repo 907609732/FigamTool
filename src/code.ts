@@ -27,7 +27,7 @@ figma.on("selectionchange", async () => {
   try {
     post({ type: "SELECTION", selection: await getSelectionSummary() });
   } catch (error) {
-    post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+    post({ type: "ERROR", message: errorMessage(error) });
   }
 });
 
@@ -126,7 +126,7 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       figma.notify(`已生成 ${created.name}`);
     }
   } catch (error) {
-    post({ type: "ERROR", message: error instanceof Error ? error.message : String(error) });
+    post({ type: "ERROR", message: errorMessage(error) });
   }
 };
 
@@ -427,7 +427,7 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
     for (const clone of clones) {
       if (!clone.removed) clone.remove();
     }
-    throw new Error(`制作变体失败：${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`制作变体失败：${errorMessage(error)}`);
   }
 }
 
@@ -492,7 +492,8 @@ async function autoNameFrame(
   const candidates = collectAutoNameCandidates(root);
   const originalFrameName = root.name.trim() || "Frame";
   const sources = [originalFrameName, ...candidates.map((candidate) => candidate.source)];
-  const translations = await translateSources(sources, normalized.translateSettings);
+  const translationResult = await translateSources(sources, normalized.translateSettings);
+  const translations = translationResult.translated;
   const frameTranslation = translations.get(originalFrameName) ?? originalFrameName;
   root.name = buildAutoFrameName(figma.root.name, frameTranslation, root.width, root.height);
   const cleanup = cleanGroupsAndMasks(root);
@@ -520,6 +521,7 @@ async function autoNameFrame(
   }
 
   figma.currentPage.selection = [root];
+  if (translationResult.warning) figma.notify(translationResult.warning);
   return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
 }
 
@@ -617,15 +619,25 @@ function isMaskNode(node: SceneNode): boolean {
   return "isMask" in node && node.isMask;
 }
 
-async function translateSources(sources: string[], settings: TranslateSettings): Promise<Map<string, string>> {
+async function translateSources(
+  sources: string[],
+  settings: TranslateSettings
+): Promise<{ translated: Map<string, string>; warning?: string }> {
   const unique = Array.from(new Set(sources));
   const translated = new Map(unique.map((source) => [source, source]));
   const chinese = unique.filter(containsChinese);
-  if (!chinese.length) return translated;
-  if (!settings.appId || !settings.secretKey) throw new Error("画板中有中文名称，请先在设置里填写百度翻译 AppID 和密钥");
+  if (!chinese.length) return { translated };
+  if (!settings.appId || !settings.secretKey) {
+    return { translated, warning: "未配置百度翻译，已用原名称继续整理" };
+  }
 
   for (const batch of translationBatches(chinese)) {
-    const results = await requestBaiduTranslationResults(batch.join("\n"), settings);
+    let results: string[];
+    try {
+      results = await requestBaiduTranslationResults(batch.join("\n"), settings);
+    } catch (error) {
+      return { translated, warning: `百度翻译失败，已用原名称继续整理：${errorMessage(error)}` };
+    }
     if (results.length === batch.length) {
       batch.forEach((source, index) => translated.set(source, results[index] || source));
       continue;
@@ -636,11 +648,15 @@ async function translateSources(sources: string[], settings: TranslateSettings):
       continue;
     }
     for (const source of batch) {
-      const single = await requestBaiduTranslationResults(source, settings);
-      translated.set(source, single.join(" ") || source);
+      try {
+        const single = await requestBaiduTranslationResults(source, settings);
+        translated.set(source, single.join(" ") || source);
+      } catch (error) {
+        return { translated, warning: `百度翻译失败，已用部分翻译结果继续整理：${errorMessage(error)}` };
+      }
     }
   }
-  return translated;
+  return { translated };
 }
 
 function translationBatches(sources: string[]): string[][] {
@@ -687,7 +703,12 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
     salt,
     sign
   });
-  const response = await fetch(`https://api.fanyi.baidu.com/api/trans/vip/translate?${query}`);
+  let response: Response;
+  try {
+    response = await fetch(`https://fanyi-api.baidu.com/api/trans/vip/translate?${query}`);
+  } catch (error) {
+    throw new Error(`百度翻译网络请求失败：${errorMessage(error)}`);
+  }
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);
   const payload = await response.json();
   if (payload?.error_code) throw new Error(`百度翻译失败：${payload.error_code} ${payload.error_msg || ""}`.trim());
@@ -702,6 +723,23 @@ function encodeQuery(values: Record<string, string>): string {
   return Object.keys(values)
     .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(values[key])}`)
     .join("&");
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const message = record.message || record.error || record.reason || record.statusText;
+    if (typeof message === "string" && message.trim()) return message;
+    try {
+      const json = JSON.stringify(error);
+      if (json && json !== "{}") return json;
+    } catch {
+      // Some host errors are not serializable.
+    }
+  }
+  return String(error);
 }
 
 async function applyPresetToNode(node: SceneNode, preset: PropertyPreset): Promise<boolean> {
