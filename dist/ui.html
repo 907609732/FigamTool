@@ -92,6 +92,7 @@
       <nav>
         <div class="nav-pages">
           <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
+          <button class="tab" data-tab="organize" title="一键整理并命名画板">整理</button>
           <button class="tab" data-tab="tools" title="实用功能">功能</button>
           <button class="tab" data-tab="ue" title="UE画板">UE</button>
         </div>
@@ -123,7 +124,6 @@
             <div id="termList" class="term-list"></div>
           </div>
           <div class="grid">
-            <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
             <div class="panel">
               <div class="inline-action">
                 <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
@@ -135,6 +135,14 @@
               <div id="termEditor" class="grid"></div>
             </fieldset>
           </div>
+        </div>
+      </section>
+
+      <section id="organize">
+        <div id="organizeSelectionPanel" class="panel"></div>
+        <div class="panel grid">
+          <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
+          <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
         </div>
       </section>
 
@@ -165,7 +173,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.15</span>
+            <span id="versionText">V0.1.16</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -363,6 +371,7 @@
         document.getElementById("selectionText").textContent = selection.count ? "已选中 " + selection.count + " 个节点" : "未选中节点";
         var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.kind + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
         document.getElementById("selectionPanel").innerHTML = html;
+        document.getElementById("organizeSelectionPanel").innerHTML = html;
         document.getElementById("ueSelectionPanel").innerHTML = html;
       }
       function renderTerms() {
