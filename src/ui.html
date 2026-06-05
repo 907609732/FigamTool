@@ -53,6 +53,7 @@
       .help-btn { width: 32px; min-width: 32px; padding: 0; font-size: 16px; font-weight: 700; }
       .percent-input { display: grid; grid-template-columns: minmax(0, 1fr) 18px; gap: 4px; align-items: center; }
       .percent-input span { color: var(--figma-color-text-secondary, #666); }
+      .constraint-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; min-width: 0; }
       .check { display: flex; align-items: center; gap: 8px; min-height: 30px; }
       .check input { width: 14px; min-height: 14px; }
       .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
@@ -410,7 +411,7 @@
           '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
           '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击任意词条时应用当前属性方案</label>' +
           '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
-          '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button></div>' +
+          '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
           '<div class="prop-grid">' +
             prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
             prop("fontStyle", "字重", "text", v.fontStyle, enabled.fontStyle) +
@@ -422,6 +423,7 @@
             selectProp("textAlignHorizontal", "横向对齐", v.textAlignHorizontal, enabled.textAlignHorizontal, [["LEFT","Left"],["CENTER","Center"],["RIGHT","Right"],["JUSTIFIED","Justify"]]) +
             selectProp("textAlignVertical", "纵向对齐", v.textAlignVertical, enabled.textAlignVertical, [["TOP","Top"],["CENTER","Middle"],["BOTTOM","Bottom"]]) +
             prop("cornerRadius", "圆角", "number", v.cornerRadius, enabled.cornerRadius) +
+            constraintsProp(v.constraintsHorizontal, v.constraintsVertical, enabled.constraints) +
           '</div>';
         ["termWord","termLabel","termKind","termDescription"].forEach(function(id) {
           document.getElementById(id).onchange = syncTermEditor;
@@ -437,6 +439,13 @@
         document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncPropertyPreset; });
         document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { setValue("prop-fontSize", btn.dataset.quickFont); syncPropertyPreset(); }; });
         document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { setValue("prop-textFill", btn.dataset.quickColor); syncPropertyPreset(); }; });
+        document.getElementById("constraintsCenterBtn").onclick = function() {
+          var enabledInput = document.querySelector('[data-prop-enabled="constraints"]');
+          if (enabledInput) enabledInput.checked = true;
+          setValue("prop-constraintsHorizontal", "CENTER");
+          setValue("prop-constraintsVertical", "CENTER");
+          syncPropertyPreset();
+        };
       }
       function prop(key, label, type, value, enabled) {
         return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input id="prop-' + key + '" data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
@@ -446,6 +455,11 @@
       }
       function selectProp(key, label, value, enabled, options) {
         return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><select id="prop-' + key + '" data-prop-key="' + key + '">' + options.map(function(option) { return '<option value="' + option[0] + '" ' + (option[0] === value ? "selected" : "") + '>' + option[1] + '</option>'; }).join("") + '</select></div>';
+      }
+      function constraintsProp(horizontal, vertical, enabled) {
+        var horizontalOptions = [["MIN","左"],["CENTER","居中"],["MAX","右"],["STRETCH","左右拉伸"],["SCALE","缩放"]];
+        var verticalOptions = [["MIN","上"],["CENTER","居中"],["MAX","下"],["STRETCH","上下拉伸"],["SCALE","缩放"]];
+        return '<div class="prop-line"><label class="check"><input data-prop-enabled="constraints" type="checkbox" ' + (enabled ? "checked" : "") + '>Constraints</label><div class="constraint-selects"><select id="prop-constraintsHorizontal" data-prop-key="constraintsHorizontal">' + horizontalOptions.map(function(option) { return '<option value="' + option[0] + '" ' + (option[0] === horizontal ? "selected" : "") + '>' + option[1] + '</option>'; }).join("") + '</select><select id="prop-constraintsVertical" data-prop-key="constraintsVertical">' + verticalOptions.map(function(option) { return '<option value="' + option[0] + '" ' + (option[0] === vertical ? "selected" : "") + '>' + option[1] + '</option>'; }).join("") + '</select></div></div>';
       }
       function syncTermEditor() {
         var entry = activeTerm();
