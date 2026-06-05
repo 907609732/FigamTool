@@ -762,6 +762,11 @@ async function applyPresetToNode(node: SceneNode, preset: PropertyPreset): Promi
     node.blendMode = values.blendMode;
     changed = true;
   }
+  if (enabled.position && "x" in node && "y" in node) {
+    node.x = values.positionX;
+    node.y = values.positionY;
+    changed = true;
+  }
   if (enabled.constraints && "constraints" in node) {
     node.constraints = { horizontal: values.constraintsHorizontal, vertical: values.constraintsVertical };
     changed = true;

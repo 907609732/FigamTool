@@ -41,6 +41,8 @@ export interface PropertyValues {
   visible: boolean;
   locked: boolean;
   blendMode: BlendMode;
+  positionX: number;
+  positionY: number;
   fontFamily: string;
   fontStyle: string;
   fontSize: number;
@@ -311,6 +313,8 @@ export const defaultConfig: PluginConfig = {
         visible: true,
         locked: false,
         blendMode: "NORMAL",
+        positionX: 0,
+        positionY: 0,
         fontFamily: "Inter",
         fontStyle: "Regular",
         fontSize: 28,

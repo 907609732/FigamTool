@@ -185,6 +185,8 @@
           visible: true,
           locked: false,
           blendMode: "NORMAL",
+          positionX: 0,
+          positionY: 0,
           fontFamily: "Inter",
           fontStyle: "Regular",
           fontSize: 28,
@@ -879,6 +881,11 @@
     }
     if (enabled.blendMode && "blendMode" in node) {
       node.blendMode = values.blendMode;
+      changed = true;
+    }
+    if (enabled.position && "x" in node && "y" in node) {
+      node.x = values.positionX;
+      node.y = values.positionY;
       changed = true;
     }
     if (enabled.constraints && "constraints" in node) {

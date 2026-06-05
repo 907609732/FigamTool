@@ -252,7 +252,7 @@
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
-      var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPx: 42, lineHeightPercent: 150, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
+      var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", positionX: 0, positionY: 0, fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPx: 42, lineHeightPercent: 150, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
       var config = null;
       var selection = { count: 0, roots: [] };
       var activeTermId = "";
@@ -411,8 +411,9 @@
           '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
           '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击任意词条时应用当前属性方案</label>' +
           '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
-          '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
+          '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Position</span><button id="positionZeroBtn">一键归零</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
           '<div class="prop-grid">' +
+            positionProp(v.positionX, v.positionY, enabled.position) +
             prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
             prop("fontStyle", "字重", "text", v.fontStyle, enabled.fontStyle) +
             prop("fontSize", "字号", "number", v.fontSize, enabled.fontSize) +
@@ -439,6 +440,13 @@
         document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncPropertyPreset; });
         document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { setValue("prop-fontSize", btn.dataset.quickFont); syncPropertyPreset(); }; });
         document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { setValue("prop-textFill", btn.dataset.quickColor); syncPropertyPreset(); }; });
+        document.getElementById("positionZeroBtn").onclick = function() {
+          var enabledInput = document.querySelector('[data-prop-enabled="position"]');
+          if (enabledInput) enabledInput.checked = true;
+          setValue("prop-positionX", "0");
+          setValue("prop-positionY", "0");
+          syncPropertyPreset();
+        };
         document.getElementById("constraintsCenterBtn").onclick = function() {
           var enabledInput = document.querySelector('[data-prop-enabled="constraints"]');
           if (enabledInput) enabledInput.checked = true;
@@ -455,6 +463,9 @@
       }
       function selectProp(key, label, value, enabled, options) {
         return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><select id="prop-' + key + '" data-prop-key="' + key + '">' + options.map(function(option) { return '<option value="' + option[0] + '" ' + (option[0] === value ? "selected" : "") + '>' + option[1] + '</option>'; }).join("") + '</select></div>';
+      }
+      function positionProp(x, y, enabled) {
+        return '<div class="prop-line"><label class="check"><input data-prop-enabled="position" type="checkbox" ' + (enabled ? "checked" : "") + '>Position</label><div class="constraint-selects"><input id="prop-positionX" data-prop-key="positionX" type="number" value="' + esc(x) + '" title="X"><input id="prop-positionY" data-prop-key="positionY" type="number" value="' + esc(y) + '" title="Y"></div></div>';
       }
       function constraintsProp(horizontal, vertical, enabled) {
         var horizontalOptions = [["MIN","左"],["CENTER","居中"],["MAX","右"],["STRETCH","左右拉伸"],["SCALE","缩放"]];
