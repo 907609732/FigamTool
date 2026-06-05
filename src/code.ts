@@ -509,11 +509,11 @@ async function autoNameFrame(
       }
       const prefix = ruleByKind.get(candidate.kind) ?? ruleByKind.get("NODE") ?? "Node";
       const translated = translations.get(candidate.source) ?? candidate.source;
-      const body = stripNamingPrefix(toNodeName(translated), prefix);
+      const body = stripNamingPrefix(toChildNodeName(translated), prefix);
       const baseName = `${prefix}${body || candidate.kind.charAt(0) + candidate.kind.slice(1).toLowerCase()}`;
       const next = (counters.get(baseName) ?? 0) + 1;
       counters.set(baseName, next);
-      candidate.node.name = next > 1 ? `${baseName}_${String(next).padStart(2, "0")}` : baseName;
+      candidate.node.name = next > 1 ? `${baseName}${String(next).padStart(2, "0")}` : baseName;
       renamed += 1;
     } catch {
       skipped += 1;
@@ -526,9 +526,9 @@ async function autoNameFrame(
 }
 
 function buildAutoFrameName(projectName: string, translatedFrameName: string, width: number, height: number): string {
-  const project = toNodeName(projectName) || "Project";
+  const project = toFrameNameSegment(projectName) || "Project";
   const translated = stripFramePlatformToken(toNodeName(translatedFrameName)) || "Frame";
-  return `${project}${translated}${framePlatformSuffix(width, height)}`;
+  return `${project}_${translated}_${framePlatformSuffix(width, height)}`;
 }
 
 function framePlatformSuffix(width: number, height: number): "IOS" | "PC" | "Item" {
@@ -1031,6 +1031,14 @@ function getNodePath(node: BaseNode): string {
 function safeName(value: string): string {
   const cleaned = value.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
   return cleaned || "Node";
+}
+
+function toFrameNameSegment(value: string): string {
+  return safeName(value);
+}
+
+function toChildNodeName(value: string): string {
+  return toNodeName(value).replace(/_/g, "");
 }
 
 function hexToSolidPaint(hex: string): SolidPaint {

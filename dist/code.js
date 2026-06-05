@@ -662,11 +662,11 @@
         }
         const prefix = (_c = (_b = ruleByKind.get(candidate.kind)) != null ? _b : ruleByKind.get("NODE")) != null ? _c : "Node";
         const translated = (_d = translations.get(candidate.source)) != null ? _d : candidate.source;
-        const body = stripNamingPrefix(toNodeName(translated), prefix);
+        const body = stripNamingPrefix(toChildNodeName(translated), prefix);
         const baseName = `${prefix}${body || candidate.kind.charAt(0) + candidate.kind.slice(1).toLowerCase()}`;
         const next = ((_e = counters.get(baseName)) != null ? _e : 0) + 1;
         counters.set(baseName, next);
-        candidate.node.name = next > 1 ? `${baseName}_${String(next).padStart(2, "0")}` : baseName;
+        candidate.node.name = next > 1 ? `${baseName}${String(next).padStart(2, "0")}` : baseName;
         renamed += 1;
       } catch (e) {
         skipped += 1;
@@ -677,9 +677,9 @@
     return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
   }
   function buildAutoFrameName(projectName, translatedFrameName, width, height) {
-    const project = toNodeName(projectName) || "Project";
+    const project = toFrameNameSegment(projectName) || "Project";
     const translated = stripFramePlatformToken(toNodeName(translatedFrameName)) || "Frame";
-    return `${project}${translated}${framePlatformSuffix(width, height)}`;
+    return `${project}_${translated}_${framePlatformSuffix(width, height)}`;
   }
   function framePlatformSuffix(width, height) {
     const roundedWidth = Math.round(width);
@@ -1115,6 +1115,12 @@
   function safeName(value) {
     const cleaned = value.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
     return cleaned || "Node";
+  }
+  function toFrameNameSegment(value) {
+    return safeName(value);
+  }
+  function toChildNodeName(value) {
+    return toNodeName(value).replace(/_/g, "");
   }
   function hexToSolidPaint(hex2) {
     const { color, opacity } = hexToRgbAndOpacity(hex2);
