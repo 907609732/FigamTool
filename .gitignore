@@ -1,5 +1,9 @@
 node_modules/
+system/node_modules/
 .DS_Store
 .figmatool-test-config.json
+system/.figmatool-test-config.json
 dist-local/
+system/dist-local/
 manifest.local.json
+system/manifest.local.json

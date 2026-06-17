@@ -2,8 +2,8 @@
   "name": "AI Auto Namer for UE",
   "id": "ai-auto-namer-for-ue",
   "api": "1.0.0",
-  "main": "dist/code.js",
-  "ui": "dist/ui.html",
+  "main": "system/dist/code.js",
+  "ui": "system/dist/ui.html",
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": [

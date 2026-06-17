@@ -41,7 +41,7 @@ async function buildUi() {
 
 async function buildLocalManifest() {
   if (!useTestConfig) return;
-  const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
+  const manifest = JSON.parse(await readFile("../manifest.json", "utf8"));
   manifest.name = `${manifest.name} (Local Test)`;
   manifest.main = `${outDir}/code.js`;
   manifest.ui = `${outDir}/ui.html`;
