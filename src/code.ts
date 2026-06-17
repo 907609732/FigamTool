@@ -705,9 +705,15 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
   });
   let response: Response;
   try {
-    response = await fetch(`https://fanyi-api.baidu.com/api/trans/vip/translate?${query}`);
+    response = await fetch("https://fanyi-api.baidu.com/api/trans/vip/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: query
+    });
   } catch (error) {
-    throw new Error(`百度翻译网络请求失败：${errorMessage(error)}`);
+    throw new Error(
+      `百度翻译网络请求失败：${errorMessage(error)}。请确认插件使用的是最新 manifest，networkAccess 需要允许 https://fanyi-api.baidu.com。`
+    );
   }
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);
   const payload = await response.json();

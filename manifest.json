@@ -6,8 +6,13 @@
   "ui": "dist/ui.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["*"],
-    "reasoning": "Optional AI naming suggestions and Baidu translation naming can call user-configured API endpoints."
+    "allowedDomains": [
+      "https://fanyi-api.baidu.com",
+      "https://api.openai.com",
+      "https://api.moonshot.cn"
+    ],
+    "devAllowedDomains": ["*"],
+    "reasoning": "Baidu translation naming and optional AI naming suggestions call these configured API endpoints. Development builds may test other user-configured endpoints."
   },
   "documentAccess": "dynamic-page"
 }
