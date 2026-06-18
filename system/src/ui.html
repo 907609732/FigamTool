@@ -281,6 +281,24 @@
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
+      var kindLabels = { TEXT: "TEXT 文字", IMAGE: "IMAGE 图片", COMPONENT: "COMPONENT 组件", FRAME: "FRAME 画板/容器", SHAPE: "SHAPE 图形", NODE: "NODE 其他" };
+      var figmaTypeLabels = {
+        TEXT: "TEXT 文本",
+        RECTANGLE: "RECTANGLE 矩形",
+        FRAME: "FRAME 画板/容器",
+        COMPONENT: "COMPONENT 主组件",
+        INSTANCE: "INSTANCE 组件实例",
+        COMPONENT_SET: "COMPONENT_SET 变体组",
+        GROUP: "GROUP 组",
+        VECTOR: "VECTOR 矢量",
+        ELLIPSE: "ELLIPSE 椭圆",
+        POLYGON: "POLYGON 多边形",
+        STAR: "STAR 星形",
+        LINE: "LINE 线条",
+        BOOLEAN_OPERATION: "BOOLEAN_OPERATION 布尔形状",
+        SECTION: "SECTION 分区",
+        SLICE: "SLICE 切片"
+      };
       var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", positionX: 0, positionY: 0, fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPx: 42, lineHeightPercent: 150, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
       var config = null;
       var selection = { count: 0, roots: [] };
@@ -414,6 +432,8 @@
         });
       }
       function selectedKind() { return selection.roots.length === 1 ? selection.roots[0].kind : ""; }
+      function kindLabel(kind) { return kindLabels[kind] || (kind + " 其他"); }
+      function figmaTypeLabel(type) { return figmaTypeLabels[type] || (type + " 节点"); }
       function visibleTerms() {
         var kind = selectedKind();
         if (!kind) return config.lexicon;
@@ -423,7 +443,14 @@
       function activePreset() { return config.propertyPresets.find(function(preset) { return preset.id === config.activePropertyPresetId; }) || config.propertyPresets[0]; }
       function renderSelection() {
         document.getElementById("selectionText").textContent = selection.count ? "已选中 " + selection.count + " 个节点" : "未选中节点";
-        var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.kind + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
+        var html = selection.roots.length ? selection.roots.map(function(n) {
+          return '<div class="selection-item">' +
+            '<strong>节点名：' + esc(n.name) + '</strong>' +
+            '<span>Figma类型：' + esc(figmaTypeLabel(n.type)) + '</span>' +
+            '<span>插件分类：' + esc(kindLabel(n.kind)) + '</span>' +
+            '<span>子节点：' + n.childCount + ' 个</span>' +
+          '</div>';
+        }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
         document.getElementById("selectionPanel").innerHTML = html;
         document.getElementById("organizeSelectionPanel").innerHTML = html;
       }
@@ -433,8 +460,8 @@
         if (terms.length && !terms.some(function(entry) { return entry.id === activeTermId; })) activeTermId = terms[0].id;
         if (!terms.length && config.lexicon.length) activeTermId = config.lexicon[0].id;
         document.getElementById("termList").innerHTML = terms.length ? terms.map(function(entry) {
-          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + entry.kind + '</small><small>' + (config.applyPropertiesOnRename ? "改名 + 当前方案" : "仅改名") + '</small></button>';
-        }).join("") : '<div class="empty">当前选中节点类型没有可用词条，请新增一个 ' + esc(selectedKind()) + ' 词条。</div>';
+          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + esc(kindLabel(entry.kind)) + '</small><small>' + (config.applyPropertiesOnRename ? "改名 + 当前方案" : "仅改名") + '</small></button>';
+        }).join("") : '<div class="empty">当前选中节点类型没有可用词条，请新增一个 ' + esc(kindLabel(selectedKind())) + ' 词条。</div>';
         document.querySelectorAll("[data-apply-term]").forEach(function(btn) {
           btn.onclick = function() {
             activeTermId = btn.dataset.applyTerm;
@@ -455,7 +482,7 @@
           '<div class="two grid">' +
             '<label>词条单词/节点名<input id="termWord" value="' + esc(entry.word) + '"></label>' +
             '<label>显示名称<input id="termLabel" value="' + esc(entry.label) + '"></label>' +
-            '<label>节点类型<select id="termKind">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + '>' + kind + '</option>'; }).join("") + '</select></label>' +
+            '<label>节点类型<select id="termKind">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + '>' + kindLabel(kind) + '</option>'; }).join("") + '</select></label>' +
             '<label>说明<input id="termDescription" value="' + esc(entry.description) + '"></label>' +
           '</div>' +
           '<h3>共享属性方案</h3>' +
