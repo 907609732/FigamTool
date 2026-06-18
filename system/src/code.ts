@@ -424,17 +424,24 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
 }
 
 function variantDefinitions(mode: VariantMode): Array<{ State: string; Checked?: string }> {
-  if (mode === "six") {
+  if (mode === "six" || mode === "eight") {
     return [
       { State: "Normal", Checked: "Unchecked" },
       { State: "Hover", Checked: "Unchecked" },
       { State: "Pressed", Checked: "Unchecked" },
+      ...(mode === "eight" ? [{ State: "Disabled", Checked: "Unchecked" }] : []),
       { State: "Normal", Checked: "Checked" },
       { State: "Hover", Checked: "Checked" },
-      { State: "Pressed", Checked: "Checked" }
+      { State: "Pressed", Checked: "Checked" },
+      ...(mode === "eight" ? [{ State: "Disabled", Checked: "Checked" }] : [])
     ];
   }
-  return [{ State: "Normal" }, { State: "Hover" }, { State: "Pressed" }];
+  return [
+    { State: "Normal" },
+    { State: "Hover" },
+    { State: "Pressed" },
+    ...(mode === "four" ? [{ State: "Disabled" }] : [])
+  ];
 }
 
 function variantComponentName(definition: { State: string; Checked?: string }): string {
@@ -453,9 +460,10 @@ function positionVariant(
   height: number
 ) {
   try {
-    if (mode === "six") {
-      component.x = x + (index % 3) * (width + 20);
-      component.y = y + Math.floor(index / 3) * (height + 40);
+    if (mode === "six" || mode === "eight") {
+      const columns = mode === "eight" ? 4 : 3;
+      component.x = x + (index % columns) * (width + 20);
+      component.y = y + Math.floor(index / columns) * (height + 40);
     } else {
       component.x = x;
       component.y = y + index * (height + 20);

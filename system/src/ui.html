@@ -49,7 +49,11 @@
       .preset-switcher button { width: auto; min-width: 54px; min-height: 28px; padding: 0 8px; }
       .preset-switcher button.active { border-color: #0a66ff; color: #0a66ff; }
       .inline-action { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; align-items: end; }
-      .variant-action { display: grid; grid-template-columns: minmax(0, 1fr) 112px 32px; gap: 8px; align-items: end; }
+      .variant-action { display: grid; gap: 8px; }
+      .variant-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+      .variant-buttons button { min-height: 34px; padding: 3px 4px; line-height: 14px; }
+      .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .variant-buttons small { color: var(--figma-color-text-secondary, #666); font-size: 10px; }
       .help-btn { width: 32px; min-width: 32px; padding: 0; font-size: 16px; font-weight: 700; }
       .percent-input { display: grid; grid-template-columns: minmax(0, 1fr) 18px; gap: 4px; align-items: center; }
       .percent-input span { color: var(--figma-color-text-secondary, #666); }
@@ -149,9 +153,13 @@
       <section id="tools">
         <div class="panel">
           <div class="variant-action">
-            <label>变体模式<select id="variantMode"><option value="three">3个：跳转按钮</option><option value="six">6个：选择按钮</option></select></label>
-            <button id="createVariantsBtn" class="primary" title="将选中的 Frame 自动转为 Component，并一键制作成变体集">一键变体</button>
-            <button id="variantHelpBtn" class="help-btn" title="查看一键变体的功能明细">？</button>
+            <div class="variant-buttons">
+              <button class="primary" data-variant-mode="three" title="生成 State=Normal、Hover、Pressed"><strong>3状态</strong><small>N/H/P</small></button>
+              <button class="primary" data-variant-mode="four" title="生成 State=Normal、Hover、Pressed、Disabled"><strong>4状态</strong><small>+Disabled</small></button>
+              <button class="primary" data-variant-mode="six" title="生成 Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>6状态</strong><small>2x3</small></button>
+              <button class="primary" data-variant-mode="eight" title="生成 Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>8状态</strong><small>2x4</small></button>
+            </div>
+            <button id="variantHelpBtn" class="help-btn" title="查看四种变体模式的功能明细">？</button>
           </div>
         </div>
       </section>
@@ -207,13 +215,20 @@
       <div id="variantHelp" class="modal-overlay" hidden>
         <div class="modal-card">
           <h2>一键变体</h2>
-          <p>先选中一个独立 Frame 或主组件，再选择模式并点击“一键变体”。选中 Frame 时，插件会先自动执行 Create component，再克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
+          <p>先选中一个独立 Frame 或主组件，再直接点击需要的模式按钮。选中 Frame 时，插件会先自动执行 Create component，再克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
           <h3>3 个变体：普通跳转按钮</h3>
           <p>适合点击后跳转到其他页面的普通按钮。</p>
           <ul>
             <li>State=Normal</li>
             <li>State=Hover</li>
             <li>State=Pressed</li>
+          </ul>
+          <h3>4 个变体：含禁用态按钮</h3>
+          <ul>
+            <li>State=Normal</li>
+            <li>State=Hover</li>
+            <li>State=Pressed</li>
+            <li>State=Disabled</li>
           </ul>
           <h3>6 个变体：选择按钮</h3>
           <p>适合点击后切换到另一种选中状态的按钮。</p>
@@ -224,6 +239,17 @@
             <li>State=Normal, Checked=Checked</li>
             <li>State=Hover, Checked=Checked</li>
             <li>State=Pressed, Checked=Checked</li>
+          </ul>
+          <h3>8 个变体：含禁用态选择按钮</h3>
+          <ul>
+            <li>State=Normal, Checked=Unchecked</li>
+            <li>State=Hover, Checked=Unchecked</li>
+            <li>State=Pressed, Checked=Unchecked</li>
+            <li>State=Disabled, Checked=Unchecked</li>
+            <li>State=Normal, Checked=Checked</li>
+            <li>State=Hover, Checked=Checked</li>
+            <li>State=Pressed, Checked=Checked</li>
+            <li>State=Disabled, Checked=Checked</li>
           </ul>
           <button id="closeVariantHelpBtn">关闭</button>
         </div>
@@ -565,9 +591,9 @@
         status("正在整理并一键命名画板...");
         post({ type: "AUTO_NAME_FRAME", config: config });
       }
-      function createVariants() {
-        var mode = value("variantMode");
-        status("正在制作 " + (mode === "six" ? "6" : "3") + " 个变体...");
+      function createVariants(mode) {
+        var count = { three: 3, four: 4, six: 6, eight: 8 }[mode] || 3;
+        status("正在制作 " + count + " 个变体...");
         post({ type: "CREATE_VARIANTS", mode: mode });
       }
       function showVariantHelp(show) {
@@ -680,7 +706,7 @@
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = deleteTerm;
-      document.getElementById("createVariantsBtn").onclick = createVariants;
+      document.querySelectorAll("[data-variant-mode]").forEach(function(btn) { btn.onclick = function() { createVariants(btn.dataset.variantMode); }; });
       document.getElementById("variantHelpBtn").onclick = function() { showVariantHelp(true); };
       document.getElementById("closeVariantHelpBtn").onclick = function() { showVariantHelp(false); };
       document.getElementById("variantHelp").onclick = function(event) { if (event.target.id === "variantHelp") showVariantHelp(false); };

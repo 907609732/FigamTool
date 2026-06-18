@@ -1,6 +1,6 @@
 export type NodeKind = "TEXT" | "IMAGE" | "COMPONENT" | "FRAME" | "SHAPE" | "NODE";
 export type RenameScope = "selection" | "children" | "deep";
-export type VariantMode = "three" | "six";
+export type VariantMode = "three" | "four" | "six" | "eight";
 
 export interface NamingRule {
   id: string;
