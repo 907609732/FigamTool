@@ -11,7 +11,6 @@ import {
   type RenamePreviewItem,
   type SelectionSummary,
   type TranslateSettings,
-  type UeLayoutOptions,
   type UiToPluginMessage,
   type VariantMode
 } from "./shared";
@@ -120,11 +119,6 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       return;
     }
 
-    if (message.type === "CREATE_UE_FRAME") {
-      const created = await createUeFrame(message.options, message.config);
-      post({ type: "UE_RESULT", message: `已生成 ${created.name}，包含 ${created.count} 个节点` });
-      figma.notify(`已生成 ${created.name}`);
-    }
   } catch (error) {
     post({ type: "ERROR", message: errorMessage(error) });
   }
@@ -151,7 +145,6 @@ async function saveConfig(config: PluginConfig) {
 function normalizeConfig(input: unknown): PluginConfig {
   if (!input || typeof input !== "object") return defaultConfig;
   const partial = input as Partial<PluginConfig>;
-  const ueDefaults = partial.ueDefaults ?? {};
   const aiSettings: Partial<AiSettings> = partial.aiSettings ?? {};
   const translateSettings: Partial<TranslateSettings> = partial.translateSettings ?? {};
   const normalizedAiSettings = Object.assign({}, defaultConfig.aiSettings, aiSettings);
@@ -180,7 +173,6 @@ function normalizeConfig(input: unknown): PluginConfig {
     propertyPresets,
     activePropertyPresetId,
     applyPropertiesOnRename: partial.applyPropertiesOnRename ?? true,
-    ueDefaults: Object.assign({}, defaultConfig.ueDefaults, ueDefaults),
     aiSettings: normalizedAiSettings,
     translateSettings: normalizedTranslateSettings
   };
@@ -883,61 +875,6 @@ async function applyTextPreset(node: TextNode, preset: PropertyPreset): Promise<
   return changed;
 }
 
-async function createUeFrame(options: UeLayoutOptions, config: PluginConfig): Promise<{ name: string; count: number }> {
-  await ensureCurrentPageLoaded();
-  const source = figma.currentPage.selection[0];
-  if (!source || !("absoluteBoundingBox" in source) || !source.absoluteBoundingBox) {
-    throw new Error("请选择一个 UI 画板或包含图片的节点");
-  }
-
-  const sourceBox = source.absoluteBoundingBox;
-  const candidates = flatten(source).filter((node) => {
-    if (!options.includeHidden && "visible" in node && !node.visible) return false;
-    if (!options.includeLocked && node.locked) return false;
-    return node !== source && (getNodeKind(node) === "IMAGE" || node.exportSettings.length > 0);
-  });
-  if (!candidates.length) throw new Error("选区内没有图片或可导出节点");
-
-  const frame = figma.createFrame();
-  frame.name = `${source.name}_UE_Assets`;
-  frame.x = sourceBox.x + sourceBox.width + 120;
-  frame.y = sourceBox.y;
-  frame.resize(sourceBox.width, sourceBox.height);
-  frame.fills = [];
-  figma.currentPage.appendChild(frame);
-
-  const imageRule = config.namingRules.find((rule) => rule.kind === "IMAGE") ?? defaultConfig.namingRules[1];
-  candidates.forEach((node, index) => {
-    const clone = node.clone();
-    clone.name = `${imageRule.prefix}_${String(index + 1).padStart(imageRule.digits, "0")}`;
-    frame.appendChild(clone);
-    if (options.mode === "preserve") {
-      const box = node.absoluteBoundingBox;
-      if (box) {
-        clone.x = box.x - sourceBox.x;
-        clone.y = box.y - sourceBox.y;
-      }
-    } else {
-      const size = options.preserveSize ? { width: clone.width, height: clone.height } : scaleSize(clone, options.maxGridItemSize);
-      if (!options.preserveSize && "resize" in clone) clone.resize(size.width, size.height);
-      const columns = Math.max(1, Math.floor(sourceBox.width / (options.maxGridItemSize + options.spacing)));
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      clone.x = col * (options.maxGridItemSize + options.spacing);
-      clone.y = row * (options.maxGridItemSize + options.spacing + 28);
-    }
-  });
-
-  if (options.mode === "grid") {
-    const rows = Math.ceil(candidates.length / Math.max(1, Math.floor(sourceBox.width / (options.maxGridItemSize + options.spacing))));
-    frame.resize(sourceBox.width, Math.max(sourceBox.height, rows * (options.maxGridItemSize + options.spacing + 28)));
-  }
-
-  figma.currentPage.selection = [frame];
-  figma.viewport.scrollAndZoomIntoView([frame]);
-  return { name: frame.name, count: candidates.length };
-}
-
 async function writeProjectConfig(config: PluginConfig) {
   await ensureCurrentPageLoaded();
   const existing = figma.currentPage.findOne((node) => node.name === PROJECT_CONFIG_NODE_NAME);
@@ -1090,11 +1027,6 @@ function extractJson(content: string): string {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function scaleSize(node: SceneNode, maxSize: number) {
-  const ratio = Math.min(1, maxSize / Math.max(node.width, node.height));
-  return { width: Math.max(1, node.width * ratio), height: Math.max(1, node.height * ratio) };
 }
 
 function md5(input: string): string {

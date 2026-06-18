@@ -95,7 +95,6 @@
           <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
           <button class="tab" data-tab="organize" title="一键整理并命名画板">整理</button>
           <button class="tab" data-tab="tools" title="实用功能">功能</button>
-          <button class="tab" data-tab="ue" title="UE画板">UE</button>
         </div>
         <div class="nav-actions">
           <button id="refreshBtn" class="icon-btn" title="刷新选区">刷新</button>
@@ -157,24 +156,11 @@
         </div>
       </section>
 
-      <section id="ue">
-        <div id="ueSelectionPanel" class="panel"></div>
-        <div class="grid">
-          <label>生成模式<select id="ueMode"><option value="preserve">保持原坐标</option><option value="grid">网格整理</option></select></label>
-          <label>spacing<input id="ueSpacing" type="number"></label>
-          <label>maxGridItemSize<input id="ueMax" type="number"></label>
-          <label class="check"><input id="uePreserveSize" type="checkbox">保留原尺寸</label>
-          <label class="check"><input id="ueIncludeHidden" type="checkbox">包含 Hidden</label>
-          <label class="check"><input id="ueIncludeLocked" type="checkbox">包含 Locked</label>
-        </div>
-        <div class="actions"><button id="createUeBtn" class="primary">生成 UE 画板</button></div>
-      </section>
-
       <section id="ai">
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.20</span>
+            <span id="versionText">V0.1.21</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -294,11 +280,10 @@
             term("lex-panel", "Panel", "Panel 面板", "FRAME", "弹窗/面板容器", false, 28),
             term("lex-bg", "Bg", "Background 背景", "SHAPE", "背景块/底图", false, 28)
           ],
-          propertyPresets: [{ id: "ue-text-center", name: "文本 28 居中", targetKinds: ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
-          activePropertyPresetId: "ue-text-center",
+          propertyPresets: [{ id: "text-center", name: "文本 28 居中", targetKinds: ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
+          activePropertyPresetId: "text-center",
           applyPropertiesOnRename: true,
-          ueDefaults: { mode: "preserve", spacing: 24, preserveSize: true, includeHidden: false, includeLocked: false, maxGridItemSize: 160 },
-          aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma nodes for UE import. Return JSON array with id and name." },
+          aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma UI nodes. Return JSON array with id and name." },
           translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en" }
         };
       }
@@ -313,7 +298,6 @@
       function setChecked(id, next) { document.getElementById(id).checked = !!next; }
       function setValue(id, next) { document.getElementById(id).value = next == null ? "" : next; }
       function renameOptions() { return { scope: value("scope"), skipLocked: checked("skipLocked"), skipHidden: checked("skipHidden"), keepOriginalSuffix: false, useAiNames: false, lexiconEntryId: activeTermId }; }
-      function ueOptions() { return { mode: value("ueMode"), spacing: number("ueSpacing"), preserveSize: checked("uePreserveSize"), includeHidden: checked("ueIncludeHidden"), includeLocked: checked("ueIncludeLocked"), maxGridItemSize: number("ueMax") }; }
       function save() { post({ type: "SAVE_CONFIG", config: config }); }
       function activateTab(tabId) {
         document.querySelectorAll(".tab").forEach(function(b) { b.classList.toggle("active", b.dataset.tab === tabId); });
@@ -357,7 +341,6 @@
         if (config.aiSettings.apiKey) config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey;
         config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings || {});
         if (!config.translateSettings.secretKey && localTestConfig && localTestConfig.translateSettings) Object.assign(config.translateSettings, localTestConfig.translateSettings);
-        if (!config.ueDefaults) config.ueDefaults = fallback.ueDefaults;
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
       }
       function selectedKind() { return selection.roots.length === 1 ? selection.roots[0].kind : ""; }
@@ -373,7 +356,6 @@
         var html = selection.roots.length ? selection.roots.map(function(n) { return '<div class="selection-item"><strong>' + esc(n.name) + '</strong><span>' + n.type + ' · ' + n.kind + ' · ' + n.childCount + ' children</span></div>'; }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
         document.getElementById("selectionPanel").innerHTML = html;
         document.getElementById("organizeSelectionPanel").innerHTML = html;
-        document.getElementById("ueSelectionPanel").innerHTML = html;
       }
       function renderTerms() {
         normalizeConfig();
@@ -558,7 +540,7 @@
         renderTerms();
         renderTermEditor();
       }
-      function renderAiAndUe() {
+      function renderSettings() {
         setChecked("aiEnabled", config.aiSettings.enabled);
         setValue("aiProvider", config.aiSettings.provider || "openai-compatible");
         setValue("aiBaseUrl", config.aiSettings.baseUrl);
@@ -569,12 +551,6 @@
         setValue("baiduSecretKey", config.translateSettings.secretKey);
         setValue("baiduFrom", config.translateSettings.from);
         setValue("baiduTo", config.translateSettings.to);
-        setValue("ueMode", config.ueDefaults.mode);
-        setValue("ueSpacing", config.ueDefaults.spacing);
-        setValue("ueMax", config.ueDefaults.maxGridItemSize);
-        setChecked("uePreserveSize", config.ueDefaults.preserveSize);
-        setChecked("ueIncludeHidden", config.ueDefaults.includeHidden);
-        setChecked("ueIncludeLocked", config.ueDefaults.includeLocked);
       }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.provider = value("aiProvider"); config.aiSettings.providerKeys = config.aiSettings.providerKeys || {}; config.aiSettings.apiKey = value("aiKey"); config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey; config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
       function syncTranslate() { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; save(); status("百度翻译配置已保存"); }
@@ -613,13 +589,13 @@
         if (provider === "kimi") {
           config.aiSettings.baseUrl = "https://api.moonshot.cn/v1/chat/completions";
           config.aiSettings.model = "moonshot-v1-8k";
-          config.aiSettings.promptTemplate = "你是 Figma UI 节点命名助手。请基于节点类型、层级、尺寸和文字内容，为 UE 导入生成短英文命名。只返回 JSON 数组：[{\"id\":\"节点id\",\"name\":\"Name\"}]。";
+          config.aiSettings.promptTemplate = "你是 Figma UI 节点命名助手。请基于节点类型、层级、尺寸和文字内容生成短英文命名。只返回 JSON 数组：[{\"id\":\"节点id\",\"name\":\"Name\"}]。";
         } else {
           config.aiSettings.baseUrl = "https://api.openai.com/v1/chat/completions";
           config.aiSettings.model = "gpt-4.1-mini";
         }
         config.aiSettings.apiKey = config.aiSettings.providerKeys[provider] || "";
-        renderAiAndUe();
+        renderSettings();
         save();
         status(provider === "kimi" ? "已切换到 Kimi API 配置" : "已切换到 OpenAI 兼容配置");
       }
@@ -696,7 +672,7 @@
         link.click();
         setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
       }
-      function renderAll() { renderSelection(); renderTerms(); renderTermEditor(); renderAiAndUe(); }
+      function renderAll() { renderSelection(); renderTerms(); renderTermEditor(); renderSettings(); }
       function esc(text) { return String(text).replace(/[&<>"']/g, function(ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]; }); }
 
       document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { activateTab(btn.dataset.tab); }; });
@@ -718,7 +694,6 @@
       document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
       document.getElementById("translateBtn").onclick = translateAndRename;
-      document.getElementById("createUeBtn").onclick = function() { config.ueDefaults = ueOptions(); save(); post({ type: "CREATE_UE_FRAME", options: config.ueDefaults, config: config }); };
       document.getElementById("exportCsvBtn").onclick = exportCsv;
       document.getElementById("importCsvBtn").onclick = importCsv;
       document.getElementById("exportJsonBtn").onclick = exportJson;
@@ -764,7 +739,7 @@
         if (!message) return;
         if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderAll(); }
         if (message.type === "SELECTION") { selection = message.selection; renderSelection(); renderTerms(); renderTermEditor(); }
-        if (message.type === "APPLY_RESULT" || message.type === "UE_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);
+        if (message.type === "APPLY_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);
         if (message.type === "CONFIG_EXPORTED") { setValue("ioBox", message.json); status("配置已导出到文本框"); }
         if (message.type === "ERROR") status("错误：" + message.message);
       };

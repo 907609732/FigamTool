@@ -1,6 +1,6 @@
 {
-  "name": "AI Auto Namer for UE",
-  "id": "ai-auto-namer-for-ue",
+  "name": "AI Auto Namer",
+  "id": "ai-auto-namer",
   "api": "1.0.0",
   "main": "system/dist/code.js",
   "ui": "system/dist/ui.html",

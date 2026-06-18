@@ -1,6 +1,5 @@
 export type NodeKind = "TEXT" | "IMAGE" | "COMPONENT" | "FRAME" | "SHAPE" | "NODE";
 export type RenameScope = "selection" | "children" | "deep";
-export type UeLayoutMode = "preserve" | "grid";
 export type VariantMode = "three" | "six";
 
 export interface NamingRule {
@@ -63,15 +62,6 @@ export interface PropertyValues {
   itemSpacing: number;
 }
 
-export interface UeLayoutOptions {
-  mode: UeLayoutMode;
-  spacing: number;
-  preserveSize: boolean;
-  includeHidden: boolean;
-  includeLocked: boolean;
-  maxGridItemSize: number;
-}
-
 export type AiProvider = "openai-compatible" | "kimi";
 
 export interface AiSettings {
@@ -110,7 +100,6 @@ export interface PluginConfig {
   propertyPresets: PropertyPreset[];
   activePropertyPresetId: string;
   applyPropertiesOnRename: boolean;
-  ueDefaults: UeLayoutOptions;
   aiSettings: AiSettings;
   translateSettings: TranslateSettings;
 }
@@ -127,7 +116,6 @@ export type PluginToUiMessage =
   | { type: "SELECTION"; selection: SelectionSummary }
   | { type: "RENAME_PREVIEW"; items: RenamePreviewItem[]; aiUsed: boolean }
   | { type: "APPLY_RESULT"; message: string }
-  | { type: "UE_RESULT"; message: string }
   | { type: "CONFIG_EXPORTED"; json: string }
   | { type: "PROJECT_CONFIG_WRITTEN"; message: string }
   | { type: "ERROR"; message: string };
@@ -138,7 +126,6 @@ export type UiToPluginMessage =
   | { type: "APPLY_RENAME"; items: RenamePreviewItem[] }
   | { type: "APPLY_PROPERTIES"; preset: PropertyPreset; options: RenameOptions }
   | { type: "APPLY_LEXICON_ENTRY"; entryId: string; options: RenameOptions; config: PluginConfig }
-  | { type: "CREATE_UE_FRAME"; options: UeLayoutOptions; config: PluginConfig }
   | { type: "SAVE_CONFIG"; config: PluginConfig }
   | { type: "IMPORT_CONFIG"; json: string }
   | { type: "EXPORT_CONFIG" }
@@ -297,7 +284,7 @@ export const defaultConfig: PluginConfig = {
   ],
   propertyPresets: [
     {
-      id: "ue-text-center",
+      id: "text-center",
       name: "文本 28 居中",
       targetKinds: ["TEXT", "IMAGE", "COMPONENT", "FRAME", "SHAPE", "NODE"],
       enabled: {
@@ -336,16 +323,8 @@ export const defaultConfig: PluginConfig = {
       }
     }
   ],
-  activePropertyPresetId: "ue-text-center",
+  activePropertyPresetId: "text-center",
   applyPropertiesOnRename: true,
-  ueDefaults: {
-    mode: "preserve",
-    spacing: 24,
-    preserveSize: true,
-    includeHidden: false,
-    includeLocked: false,
-    maxGridItemSize: 160
-  },
   aiSettings: {
     enabled: false,
     provider: "openai-compatible",
@@ -354,7 +333,7 @@ export const defaultConfig: PluginConfig = {
     apiKey: "",
     model: "gpt-4.1-mini",
     promptTemplate:
-      "Name Figma nodes for UE import. Return JSON array with id and name. Use short English asset names and preserve prefixes when useful."
+      "Name Figma UI nodes. Return JSON array with id and name. Use short English asset names and preserve prefixes when useful."
   },
   translateSettings: {
     provider: "baidu",

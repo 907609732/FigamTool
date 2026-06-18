@@ -11,12 +11,11 @@ import {
   type RenameOptions,
   type RenamePreviewItem,
   type SelectionSummary,
-  type UeLayoutOptions,
   type UiToPluginMessage
 } from "./shared";
 import "./styles.css";
 
-type Tab = "naming" | "properties" | "ue" | "presets";
+type Tab = "naming" | "properties" | "presets";
 
 const nodeKinds: NodeKind[] = ["TEXT", "IMAGE", "COMPONENT", "FRAME", "SHAPE", "NODE"];
 
@@ -33,7 +32,6 @@ function App() {
   });
   const [preview, setPreview] = useState<RenamePreviewItem[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState(defaultConfig.propertyPresets[0].id);
-  const [ueOptions, setUeOptions] = useState<UeLayoutOptions>(defaultConfig.ueDefaults);
   const [status, setStatus] = useState("准备就绪");
   const [importJson, setImportJson] = useState("");
 
@@ -43,7 +41,6 @@ function App() {
       if (!message) return;
       if (message.type === "READY") {
         setConfig(message.config);
-        setUeOptions(message.config.ueDefaults);
         setSelection(message.selection);
         setSelectedPresetId(message.config.propertyPresets[0]?.id ?? "");
       }
@@ -52,7 +49,7 @@ function App() {
         setPreview(message.items);
         setStatus(`${message.aiUsed ? "AI" : "规则"}预览 ${message.items.length} 个节点`);
       }
-      if (message.type === "APPLY_RESULT" || message.type === "UE_RESULT") setStatus(message.message);
+      if (message.type === "APPLY_RESULT") setStatus(message.message);
       if (message.type === "CONFIG_EXPORTED") {
         setImportJson(message.json);
         setStatus("配置已导出到文本框");
@@ -88,11 +85,6 @@ function App() {
     });
   }
 
-  function updateUe(next: UeLayoutOptions) {
-    setUeOptions(next);
-    saveConfig({ ...config, ueDefaults: next });
-  }
-
   function addPreset() {
     const base = selectedPreset ?? defaultConfig.propertyPresets[0];
     const preset = { ...base, id: `preset-${Date.now()}`, name: "New Preset", enabled: { ...base.enabled }, values: { ...base.values } };
@@ -115,7 +107,6 @@ function App() {
       <nav>
         <TabButton id="naming" tab={tab} setTab={setTab} label="命名" />
         <TabButton id="properties" tab={tab} setTab={setTab} label="属性" />
-        <TabButton id="ue" tab={tab} setTab={setTab} label="UE画板" />
         <TabButton id="presets" tab={tab} setTab={setTab} label="词库/AI" />
       </nav>
 
@@ -154,18 +145,6 @@ function App() {
           <div className="actions">
             <button className="primary" onClick={() => post({ type: "APPLY_PROPERTIES", preset: selectedPreset, options: renameOptions })}>
               应用属性
-            </button>
-          </div>
-        </section>
-      )}
-
-      {tab === "ue" && (
-        <section>
-          <SelectionPanel selection={selection} />
-          <UeEditor options={ueOptions} setOptions={updateUe} />
-          <div className="actions">
-            <button className="primary" onClick={() => post({ type: "CREATE_UE_FRAME", options: ueOptions, config })}>
-              生成 UE 画板
             </button>
           </div>
         </section>
@@ -334,31 +313,6 @@ function PropertyEditor({ preset, updatePreset }: { preset: PropertyPreset; upda
         <ToggleNumber label="padding" keyName="padding" enabled={preset.enabled.padding} value={preset.values.padding} setEnabled={setEnabled} setValue={setValue} />
         <ToggleNumber label="itemSpacing" keyName="itemSpacing" enabled={preset.enabled.itemSpacing} value={preset.values.itemSpacing} setEnabled={setEnabled} setValue={setValue} />
       </fieldset>
-    </div>
-  );
-}
-
-function UeEditor({ options, setOptions }: { options: UeLayoutOptions; setOptions: (options: UeLayoutOptions) => void }) {
-  return (
-    <div className="controls">
-      <label>
-        生成模式
-        <select value={options.mode} onChange={(event) => setOptions({ ...options, mode: event.target.value as UeLayoutOptions["mode"] })}>
-          <option value="preserve">保持原坐标</option>
-          <option value="grid">网格整理</option>
-        </select>
-      </label>
-      <label>
-        spacing
-        <input type="number" value={options.spacing} onChange={(event) => setOptions({ ...options, spacing: Number(event.target.value) })} />
-      </label>
-      <label>
-        maxGridItemSize
-        <input type="number" value={options.maxGridItemSize} onChange={(event) => setOptions({ ...options, maxGridItemSize: Number(event.target.value) })} />
-      </label>
-      <Check label="保留原尺寸" checked={options.preserveSize} onChange={(value) => setOptions({ ...options, preserveSize: value })} />
-      <Check label="包含 Hidden" checked={options.includeHidden} onChange={(value) => setOptions({ ...options, includeHidden: value })} />
-      <Check label="包含 Locked" checked={options.includeLocked} onChange={(value) => setOptions({ ...options, includeLocked: value })} />
     </div>
   );
 }
