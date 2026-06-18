@@ -55,6 +55,8 @@
       .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .variant-buttons small { color: var(--figma-color-text-secondary, #666); font-size: 10px; }
       .template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .template-toolbar { display: flex; justify-content: flex-end; gap: 6px; }
+      .template-toolbar button { width: auto; min-width: 72px; }
       .template-card { display: grid; gap: 3px; min-height: 58px; padding: 8px; text-align: left; }
       .template-card strong, .template-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .template-card small { color: var(--figma-color-text-secondary, #666); font-size: 10px; }
@@ -158,9 +160,15 @@
       </section>
 
       <section id="templates">
-        <div class="panel grid">
+        <div id="templateHome" class="panel grid">
+          <div class="template-toolbar"><button id="templateSettingsBtn" title="配置 Library Component Key 和插入后是否打散">模板设置</button></div>
           <div class="template-grid" id="templateButtons"></div>
           <small>Library 模板需要先在设置里填写 Component Key；内置模板不需要任何配置，可直接插入基础 PC/IOS 画板。</small>
+        </div>
+        <div id="templateSettingsView" class="panel grid" hidden>
+          <div class="template-toolbar"><button id="backToTemplatesBtn" title="返回模板按钮列表">返回模板</button></div>
+          <h2>模板配置</h2>
+          <div id="templateSettings" class="template-settings"></div>
         </div>
       </section>
 
@@ -211,9 +219,6 @@
           <button id="writeProjectBtn">写入项目配置</button>
           <button id="resetBtn" class="danger">恢复默认词库</button>
         </div>
-
-        <h2>模板配置</h2>
-        <div id="templateSettings" class="template-settings"></div>
 
         <h2>AI 设置</h2>
         <div class="grid">
@@ -686,6 +691,11 @@
         renderTemplateSettings();
         status("模板配置已保存");
       }
+      function showTemplateSettings(show) {
+        document.getElementById("templateHome").hidden = !!show;
+        document.getElementById("templateSettingsView").hidden = !show;
+        if (show) renderTemplateSettings();
+      }
       function renderSettings() {
         setChecked("aiEnabled", config.aiSettings.enabled);
         setValue("aiProvider", config.aiSettings.provider || "openai-compatible");
@@ -833,6 +843,8 @@
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = deleteTerm;
+      document.getElementById("templateSettingsBtn").onclick = function() { showTemplateSettings(true); };
+      document.getElementById("backToTemplatesBtn").onclick = function() { showTemplateSettings(false); };
       document.querySelectorAll("[data-variant-mode]").forEach(function(btn) { btn.onclick = function() { createVariants(btn.dataset.variantMode); }; });
       document.getElementById("variantHelpBtn").onclick = function() { showVariantHelp(true); };
       document.getElementById("closeVariantHelpBtn").onclick = function() { showVariantHelp(false); };
