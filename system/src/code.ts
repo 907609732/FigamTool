@@ -10,6 +10,7 @@ import {
   type RenameOptions,
   type RenamePreviewItem,
   type SelectionSummary,
+  type TemplateEntry,
   type TranslateSettings,
   type UiToPluginMessage,
   type VariantMode
@@ -119,6 +120,13 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       return;
     }
 
+    if (message.type === "INSERT_TEMPLATE") {
+      const result = await insertTemplate(message.templateId, message.config);
+      post({ type: "APPLY_RESULT", message: `已插入模板：${result.name}` });
+      figma.notify(`已插入模板：${result.name}`);
+      return;
+    }
+
   } catch (error) {
     post({ type: "ERROR", message: errorMessage(error) });
   }
@@ -173,9 +181,32 @@ function normalizeConfig(input: unknown): PluginConfig {
     propertyPresets,
     activePropertyPresetId,
     applyPropertiesOnRename: partial.applyPropertiesOnRename ?? true,
+    templates: normalizeTemplates(partial.templates),
     aiSettings: normalizedAiSettings,
     translateSettings: normalizedTranslateSettings
   };
+}
+
+function normalizeTemplates(input: unknown): TemplateEntry[] {
+  const source = Array.isArray(input) && input.length ? input : defaultConfig.templates;
+  return source.map((entry, index) => {
+    const partial = entry as Partial<TemplateEntry>;
+    const fallback = defaultConfig.templates[index] ?? defaultConfig.templates[defaultConfig.templates.length - 1];
+    const source = partial.source === "library" || partial.source === "builtin" ? partial.source : fallback.source;
+    const platform =
+      partial.platform === "PC" || partial.platform === "IOS" || partial.platform === "Item" || partial.platform === "None"
+        ? partial.platform
+        : fallback.platform;
+    return {
+      id: partial.id || `tpl-${index + 1}`,
+      source,
+      name: partial.name || fallback.name,
+      description: partial.description || fallback.description,
+      componentKey: partial.componentKey || "",
+      platform,
+      detachAfterInsert: partial.detachAfterInsert ?? fallback.detachAfterInsert
+    };
+  });
 }
 
 function normalizeLexicon(input: unknown): LexiconEntry[] {
@@ -471,6 +502,99 @@ function positionVariant(
   } catch {
     // Auto-layout parents decide positioning; combineAsVariants can still create the set.
   }
+}
+
+async function insertTemplate(templateId: string, config: PluginConfig): Promise<{ name: string }> {
+  await ensureCurrentPageLoaded();
+  const normalized = normalizeConfig(config);
+  const template = normalized.templates.find((entry) => entry.id === templateId);
+  if (!template) throw new Error("未找到模板配置，请刷新插件后重试");
+
+  const created = template.source === "library"
+    ? await insertLibraryTemplate(template)
+    : await insertBuiltinTemplate(template);
+
+  const name = templateNodeName(template);
+  created.name = name;
+  placeAtViewportCenter(created);
+  figma.currentPage.selection = [created];
+  figma.viewport.scrollAndZoomIntoView([created]);
+  return { name };
+}
+
+async function insertLibraryTemplate(template: TemplateEntry): Promise<SceneNode> {
+  const key = template.componentKey.trim();
+  if (!key) throw new Error(`请先在设置里填写 ${template.name} 的 Library Component Key`);
+  const component = await figma.importComponentByKeyAsync(key);
+  const instance = component.createInstance();
+  figma.currentPage.appendChild(instance);
+  if (template.detachAfterInsert) {
+    return instance.detachInstance();
+  }
+  return instance;
+}
+
+async function insertBuiltinTemplate(template: TemplateEntry): Promise<FrameNode> {
+  const size = template.platform === "IOS"
+    ? { width: 2340, height: 1080 }
+    : template.platform === "PC"
+      ? { width: 2560, height: 1440 }
+      : { width: 1200, height: 720 };
+  const frame = figma.createFrame();
+  frame.resize(size.width, size.height);
+  frame.fills = [hexToSolidPaint("#1E1E1E")];
+  frame.clipsContent = true;
+
+  const bg = figma.createRectangle();
+  bg.name = "Bg";
+  bg.resize(size.width, size.height);
+  bg.fills = [hexToSolidPaint("#2F3338")];
+  frame.appendChild(bg);
+
+  const content = figma.createFrame();
+  content.name = "Content";
+  content.resize(Math.round(size.width * 0.72), Math.round(size.height * 0.66));
+  content.x = Math.round((size.width - content.width) / 2);
+  content.y = Math.round((size.height - content.height) / 2);
+  content.fills = [hexToSolidPaint("#3E4652")];
+  content.cornerRadius = 24;
+  content.clipsContent = true;
+  frame.appendChild(content);
+
+  const title = figma.createText();
+  await loadDefaultFont(title);
+  title.name = "TxtTitle";
+  title.characters = template.platform === "IOS" ? "IOS Template" : "PC Template";
+  title.fontSize = template.platform === "IOS" ? 52 : 64;
+  title.fills = [hexToSolidPaint("#FFFFFF")];
+  title.x = 64;
+  title.y = 56;
+  content.appendChild(title);
+
+  figma.currentPage.appendChild(frame);
+  return frame;
+}
+
+async function loadDefaultFont(text: TextNode) {
+  const fontName: FontName = { family: "Inter", style: "Regular" };
+  try {
+    await figma.loadFontAsync(fontName);
+    text.fontName = fontName;
+  } catch {
+    if (text.fontName !== figma.mixed) await figma.loadFontAsync(text.fontName);
+  }
+}
+
+function templateNodeName(template: TemplateEntry): string {
+  const project = toFrameNameSegment(figma.root.name) || "Project";
+  const base = toFrameNameSegment(template.name.replace(/^Library\s*/i, "").replace(/^内置\s*/i, "")) || "Template";
+  if (template.platform === "None") return `${project}_${base}`;
+  return `${project}_${stripFramePlatformToken(base)}_${template.platform}`;
+}
+
+function placeAtViewportCenter(node: SceneNode) {
+  node.x = Math.round(figma.viewport.center.x - node.width / 2);
+  node.y = Math.round(figma.viewport.center.y - node.height / 2);
 }
 
 function isChildrenContainer(node: BaseNode | null): node is BaseNode & ChildrenMixin {

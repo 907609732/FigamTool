@@ -54,6 +54,12 @@
       .variant-buttons button { min-height: 34px; padding: 3px 4px; line-height: 14px; }
       .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .variant-buttons small { color: var(--figma-color-text-secondary, #666); font-size: 10px; }
+      .template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .template-card { display: grid; gap: 3px; min-height: 58px; padding: 8px; text-align: left; }
+      .template-card strong, .template-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .template-card small { color: var(--figma-color-text-secondary, #666); font-size: 10px; }
+      .template-settings { display: grid; gap: 8px; }
+      .template-setting-card { display: grid; gap: 6px; border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; padding: 8px; }
       .help-btn { width: 32px; min-width: 32px; padding: 0; font-size: 16px; font-weight: 700; }
       .percent-input { display: grid; grid-template-columns: minmax(0, 1fr) 18px; gap: 4px; align-items: center; }
       .percent-input span { color: var(--figma-color-text-secondary, #666); }
@@ -98,6 +104,7 @@
         <div class="nav-pages">
           <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
           <button class="tab" data-tab="organize" title="一键整理并命名画板">整理</button>
+          <button class="tab" data-tab="templates" title="Library 和内置模板">模板</button>
           <button class="tab" data-tab="tools" title="实用功能">功能</button>
         </div>
         <div class="nav-actions">
@@ -150,6 +157,13 @@
         </div>
       </section>
 
+      <section id="templates">
+        <div class="panel grid">
+          <div class="template-grid" id="templateButtons"></div>
+          <small>Library 模板需要先在设置里填写 Component Key；内置模板不需要任何配置，可直接插入基础 PC/IOS 画板。</small>
+        </div>
+      </section>
+
       <section id="tools">
         <div class="panel">
           <div class="variant-action">
@@ -197,6 +211,9 @@
           <button id="writeProjectBtn">写入项目配置</button>
           <button id="resetBtn" class="danger">恢复默认词库</button>
         </div>
+
+        <h2>模板配置</h2>
+        <div id="templateSettings" class="template-settings"></div>
 
         <h2>AI 设置</h2>
         <div class="grid">
@@ -309,9 +326,18 @@
           propertyPresets: [{ id: "text-center", name: "文本 28 居中", targetKinds: ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"], enabled: { opacity: true, fontSize: true, lineHeightPercent: true, letterSpacing: true, textAlignHorizontal: true, textAlignVertical: true }, values: defaultValues }],
           activePropertyPresetId: "text-center",
           applyPropertiesOnRename: true,
+          templates: defaultTemplates(),
           aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma UI nodes. Return JSON array with id and name." },
           translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en" }
         };
+      }
+      function defaultTemplates() {
+        return [
+          { id: "tpl-library-pc", source: "library", name: "Library PC画板", description: "从已发布 Library 组件导入 PC 通用画板，默认插入后打散成可编辑节点。", componentKey: "", platform: "PC", detachAfterInsert: true },
+          { id: "tpl-library-ios", source: "library", name: "Library IOS画板", description: "从已发布 Library 组件导入 IOS 通用画板，默认插入后打散成可编辑节点。", componentKey: "", platform: "IOS", detachAfterInsert: true },
+          { id: "tpl-builtin-pc", source: "builtin", name: "内置 PC画板", description: "插件内置 2560x1440 PC 基础画板，不依赖 Library。", componentKey: "", platform: "PC", detachAfterInsert: true },
+          { id: "tpl-builtin-ios", source: "builtin", name: "内置 IOS画板", description: "插件内置 2340x1080 IOS 基础画板，不依赖 Library。", componentKey: "", platform: "IOS", detachAfterInsert: true }
+        ];
       }
       function term(id, word, label, kind, description) {
         return { id: id, word: word, label: label, kind: kind, prefix: word, description: description };
@@ -360,6 +386,7 @@
         });
         if (!config.propertyPresets.some(function(preset) { return preset.id === config.activePropertyPresetId; })) config.activePropertyPresetId = config.propertyPresets[0].id;
         if (config.applyPropertiesOnRename == null) config.applyPropertiesOnRename = true;
+        config.templates = normalizeTemplates(config.templates, fallback.templates);
         config.aiSettings = Object.assign({}, fallback.aiSettings, config.aiSettings || {});
         if (!config.aiSettings.apiKey && localTestConfig && localTestConfig.aiSettings) Object.assign(config.aiSettings, localTestConfig.aiSettings);
         if (!config.aiSettings.provider) config.aiSettings.provider = "openai-compatible";
@@ -368,6 +395,23 @@
         config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings || {});
         if (!config.translateSettings.secretKey && localTestConfig && localTestConfig.translateSettings) Object.assign(config.translateSettings, localTestConfig.translateSettings);
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
+      }
+      function normalizeTemplates(source, fallback) {
+        var entries = Array.isArray(source) && source.length ? source : fallback;
+        return entries.map(function(entry, index) {
+          var base = fallback[index] || fallback[fallback.length - 1];
+          var sourceType = entry.source === "library" || entry.source === "builtin" ? entry.source : base.source;
+          var platform = ["PC","IOS","Item","None"].indexOf(entry.platform) >= 0 ? entry.platform : base.platform;
+          return {
+            id: entry.id || "tpl-" + (index + 1),
+            source: sourceType,
+            name: entry.name || base.name,
+            description: entry.description || base.description,
+            componentKey: entry.componentKey || "",
+            platform: platform,
+            detachAfterInsert: entry.detachAfterInsert == null ? base.detachAfterInsert : !!entry.detachAfterInsert
+          };
+        });
       }
       function selectedKind() { return selection.roots.length === 1 ? selection.roots[0].kind : ""; }
       function visibleTerms() {
@@ -566,6 +610,55 @@
         renderTerms();
         renderTermEditor();
       }
+      function renderTemplates() {
+        normalizeConfig();
+        document.getElementById("templateButtons").innerHTML = config.templates.map(function(template) {
+          var tag = template.source === "library" ? "Library" : "内置";
+          var mode = template.detachAfterInsert ? "插入后打散" : "保留实例";
+          return '<button class="template-card primary" data-template-id="' + esc(template.id) + '" title="' + esc(template.description) + '">' +
+            '<strong>' + esc(template.name) + '</strong>' +
+            '<small>' + esc(tag + " · " + template.platform + " · " + mode) + '</small>' +
+            '<small>' + esc(template.description) + '</small>' +
+          '</button>';
+        }).join("");
+        document.querySelectorAll("[data-template-id]").forEach(function(btn) {
+          btn.onclick = function() { insertTemplate(btn.dataset.templateId); };
+        });
+      }
+      function renderTemplateSettings() {
+        document.getElementById("templateSettings").innerHTML = config.templates.map(function(template, index) {
+          return '<div class="template-setting-card" data-template-setting="' + index + '">' +
+            '<strong>' + esc(template.name) + '</strong>' +
+            '<div class="two grid">' +
+              '<label>按钮名<input data-template-field="name" value="' + esc(template.name) + '"></label>' +
+              '<label>来源<select data-template-field="source"><option value="library" ' + (template.source === "library" ? "selected" : "") + '>Library</option><option value="builtin" ' + (template.source === "builtin" ? "selected" : "") + '>内置</option></select></label>' +
+              '<label>平台<select data-template-field="platform"><option value="PC" ' + (template.platform === "PC" ? "selected" : "") + '>PC</option><option value="IOS" ' + (template.platform === "IOS" ? "selected" : "") + '>IOS</option><option value="Item" ' + (template.platform === "Item" ? "selected" : "") + '>Item</option><option value="None" ' + (template.platform === "None" ? "selected" : "") + '>None</option></select></label>' +
+              '<label>Component Key<input data-template-field="componentKey" value="' + esc(template.componentKey) + '" placeholder="Library 模板填写"></label>' +
+            '</div>' +
+            '<label>说明<input data-template-field="description" value="' + esc(template.description) + '"></label>' +
+            '<label class="check"><input data-template-field="detachAfterInsert" type="checkbox" ' + (template.detachAfterInsert ? "checked" : "") + '>插入后打散成可编辑节点</label>' +
+          '</div>';
+        }).join("");
+        document.querySelectorAll("[data-template-setting]").forEach(function(card) {
+          card.onchange = function() { syncTemplateSettings(); };
+        });
+      }
+      function syncTemplateSettings() {
+        document.querySelectorAll("[data-template-setting]").forEach(function(card) {
+          var index = Number(card.dataset.templateSetting);
+          var template = config.templates[index];
+          if (!template) return;
+          card.querySelectorAll("[data-template-field]").forEach(function(input) {
+            var field = input.dataset.templateField;
+            template[field] = input.type === "checkbox" ? input.checked : input.value;
+          });
+        });
+        normalizeConfig();
+        save();
+        renderTemplates();
+        renderTemplateSettings();
+        status("模板配置已保存");
+      }
       function renderSettings() {
         setChecked("aiEnabled", config.aiSettings.enabled);
         setValue("aiProvider", config.aiSettings.provider || "openai-compatible");
@@ -577,6 +670,7 @@
         setValue("baiduSecretKey", config.translateSettings.secretKey);
         setValue("baiduFrom", config.translateSettings.from);
         setValue("baiduTo", config.translateSettings.to);
+        renderTemplateSettings();
       }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.provider = value("aiProvider"); config.aiSettings.providerKeys = config.aiSettings.providerKeys || {}; config.aiSettings.apiKey = value("aiKey"); config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey; config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
       function syncTranslate() { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; save(); status("百度翻译配置已保存"); }
@@ -595,6 +689,12 @@
         var count = { three: 3, four: 4, six: 6, eight: 8 }[mode] || 3;
         status("正在制作 " + count + " 个变体...");
         post({ type: "CREATE_VARIANTS", mode: mode });
+      }
+      function insertTemplate(templateId) {
+        var template = config.templates.find(function(entry) { return entry.id === templateId; });
+        if (!template) { status("未找到模板配置"); return; }
+        status("正在插入模板：" + template.name + "...");
+        post({ type: "INSERT_TEMPLATE", templateId: templateId, config: config });
       }
       function showVariantHelp(show) {
         document.getElementById("variantHelp").hidden = !show;
@@ -698,7 +798,7 @@
         link.click();
         setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
       }
-      function renderAll() { renderSelection(); renderTerms(); renderTermEditor(); renderSettings(); }
+      function renderAll() { renderSelection(); renderTerms(); renderTermEditor(); renderTemplates(); renderSettings(); }
       function esc(text) { return String(text).replace(/[&<>"']/g, function(ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]; }); }
 
       document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { activateTab(btn.dataset.tab); }; });

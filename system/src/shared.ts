@@ -1,6 +1,8 @@
 export type NodeKind = "TEXT" | "IMAGE" | "COMPONENT" | "FRAME" | "SHAPE" | "NODE";
 export type RenameScope = "selection" | "children" | "deep";
 export type VariantMode = "three" | "four" | "six" | "eight";
+export type TemplateSource = "library" | "builtin";
+export type TemplatePlatform = "PC" | "IOS" | "Item" | "None";
 
 export interface NamingRule {
   id: string;
@@ -94,12 +96,23 @@ export interface LexiconEntry {
   values?: Partial<PropertyValues>;
 }
 
+export interface TemplateEntry {
+  id: string;
+  source: TemplateSource;
+  name: string;
+  description: string;
+  componentKey: string;
+  platform: TemplatePlatform;
+  detachAfterInsert: boolean;
+}
+
 export interface PluginConfig {
   namingRules: NamingRule[];
   lexicon: LexiconEntry[];
   propertyPresets: PropertyPreset[];
   activePropertyPresetId: string;
   applyPropertiesOnRename: boolean;
+  templates: TemplateEntry[];
   aiSettings: AiSettings;
   translateSettings: TranslateSettings;
 }
@@ -134,6 +147,7 @@ export type UiToPluginMessage =
   | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig }
   | { type: "AUTO_NAME_FRAME"; config: PluginConfig }
   | { type: "CREATE_VARIANTS"; mode: VariantMode }
+  | { type: "INSERT_TEMPLATE"; templateId: string; config: PluginConfig }
   | { type: "RESIZE_UI"; width: number; height: number };
 
 export const defaultConfig: PluginConfig = {
@@ -325,6 +339,44 @@ export const defaultConfig: PluginConfig = {
   ],
   activePropertyPresetId: "text-center",
   applyPropertiesOnRename: true,
+  templates: [
+    {
+      id: "tpl-library-pc",
+      source: "library",
+      name: "Library PC画板",
+      description: "从已发布 Library 组件导入 PC 通用画板，默认插入后打散成可编辑节点。",
+      componentKey: "",
+      platform: "PC",
+      detachAfterInsert: true
+    },
+    {
+      id: "tpl-library-ios",
+      source: "library",
+      name: "Library IOS画板",
+      description: "从已发布 Library 组件导入 IOS 通用画板，默认插入后打散成可编辑节点。",
+      componentKey: "",
+      platform: "IOS",
+      detachAfterInsert: true
+    },
+    {
+      id: "tpl-builtin-pc",
+      source: "builtin",
+      name: "内置 PC画板",
+      description: "插件内置 2560x1440 PC 基础画板，不依赖 Library。",
+      componentKey: "",
+      platform: "PC",
+      detachAfterInsert: true
+    },
+    {
+      id: "tpl-builtin-ios",
+      source: "builtin",
+      name: "内置 IOS画板",
+      description: "插件内置 2340x1080 IOS 基础画板，不依赖 Library。",
+      componentKey: "",
+      platform: "IOS",
+      detachAfterInsert: true
+    }
+  ],
   aiSettings: {
     enabled: false,
     provider: "openai-compatible",

@@ -210,6 +210,44 @@
     ],
     activePropertyPresetId: "text-center",
     applyPropertiesOnRename: true,
+    templates: [
+      {
+        id: "tpl-library-pc",
+        source: "library",
+        name: "Library PC\u753B\u677F",
+        description: "\u4ECE\u5DF2\u53D1\u5E03 Library \u7EC4\u4EF6\u5BFC\u5165 PC \u901A\u7528\u753B\u677F\uFF0C\u9ED8\u8BA4\u63D2\u5165\u540E\u6253\u6563\u6210\u53EF\u7F16\u8F91\u8282\u70B9\u3002",
+        componentKey: "",
+        platform: "PC",
+        detachAfterInsert: true
+      },
+      {
+        id: "tpl-library-ios",
+        source: "library",
+        name: "Library IOS\u753B\u677F",
+        description: "\u4ECE\u5DF2\u53D1\u5E03 Library \u7EC4\u4EF6\u5BFC\u5165 IOS \u901A\u7528\u753B\u677F\uFF0C\u9ED8\u8BA4\u63D2\u5165\u540E\u6253\u6563\u6210\u53EF\u7F16\u8F91\u8282\u70B9\u3002",
+        componentKey: "",
+        platform: "IOS",
+        detachAfterInsert: true
+      },
+      {
+        id: "tpl-builtin-pc",
+        source: "builtin",
+        name: "\u5185\u7F6E PC\u753B\u677F",
+        description: "\u63D2\u4EF6\u5185\u7F6E 2560x1440 PC \u57FA\u7840\u753B\u677F\uFF0C\u4E0D\u4F9D\u8D56 Library\u3002",
+        componentKey: "",
+        platform: "PC",
+        detachAfterInsert: true
+      },
+      {
+        id: "tpl-builtin-ios",
+        source: "builtin",
+        name: "\u5185\u7F6E IOS\u753B\u677F",
+        description: "\u63D2\u4EF6\u5185\u7F6E 2340x1080 IOS \u57FA\u7840\u753B\u677F\uFF0C\u4E0D\u4F9D\u8D56 Library\u3002",
+        componentKey: "",
+        platform: "IOS",
+        detachAfterInsert: true
+      }
+    ],
     aiSettings: {
       enabled: false,
       provider: "openai-compatible",
@@ -319,6 +357,12 @@
         figma.notify(`${prefix}\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53`);
         return;
       }
+      if (message.type === "INSERT_TEMPLATE") {
+        const result = await insertTemplate(message.templateId, message.config);
+        post({ type: "APPLY_RESULT", message: `\u5DF2\u63D2\u5165\u6A21\u677F\uFF1A${result.name}` });
+        figma.notify(`\u5DF2\u63D2\u5165\u6A21\u677F\uFF1A${result.name}`);
+        return;
+      }
     } catch (error) {
       post({ type: "ERROR", message: errorMessage(error) });
     }
@@ -367,9 +411,29 @@
       propertyPresets,
       activePropertyPresetId,
       applyPropertiesOnRename: (_d = partial.applyPropertiesOnRename) != null ? _d : true,
+      templates: normalizeTemplates(partial.templates),
       aiSettings: normalizedAiSettings,
       translateSettings: normalizedTranslateSettings
     };
+  }
+  function normalizeTemplates(input) {
+    const source = Array.isArray(input) && input.length ? input : defaultConfig.templates;
+    return source.map((entry, index) => {
+      var _a, _b;
+      const partial = entry;
+      const fallback = (_a = defaultConfig.templates[index]) != null ? _a : defaultConfig.templates[defaultConfig.templates.length - 1];
+      const source2 = partial.source === "library" || partial.source === "builtin" ? partial.source : fallback.source;
+      const platform = partial.platform === "PC" || partial.platform === "IOS" || partial.platform === "Item" || partial.platform === "None" ? partial.platform : fallback.platform;
+      return {
+        id: partial.id || `tpl-${index + 1}`,
+        source: source2,
+        name: partial.name || fallback.name,
+        description: partial.description || fallback.description,
+        componentKey: partial.componentKey || "",
+        platform,
+        detachAfterInsert: (_b = partial.detachAfterInsert) != null ? _b : fallback.detachAfterInsert
+      };
+    });
   }
   function normalizeLexicon(input) {
     const source = Array.isArray(input) ? input : defaultConfig.lexicon;
@@ -624,6 +688,81 @@
       }
     } catch (e) {
     }
+  }
+  async function insertTemplate(templateId, config) {
+    await ensureCurrentPageLoaded();
+    const normalized = normalizeConfig(config);
+    const template = normalized.templates.find((entry) => entry.id === templateId);
+    if (!template) throw new Error("\u672A\u627E\u5230\u6A21\u677F\u914D\u7F6E\uFF0C\u8BF7\u5237\u65B0\u63D2\u4EF6\u540E\u91CD\u8BD5");
+    const created = template.source === "library" ? await insertLibraryTemplate(template) : await insertBuiltinTemplate(template);
+    const name = templateNodeName(template);
+    created.name = name;
+    placeAtViewportCenter(created);
+    figma.currentPage.selection = [created];
+    figma.viewport.scrollAndZoomIntoView([created]);
+    return { name };
+  }
+  async function insertLibraryTemplate(template) {
+    const key = template.componentKey.trim();
+    if (!key) throw new Error(`\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u586B\u5199 ${template.name} \u7684 Library Component Key`);
+    const component = await figma.importComponentByKeyAsync(key);
+    const instance = component.createInstance();
+    figma.currentPage.appendChild(instance);
+    if (template.detachAfterInsert) {
+      return instance.detachInstance();
+    }
+    return instance;
+  }
+  async function insertBuiltinTemplate(template) {
+    const size = template.platform === "IOS" ? { width: 2340, height: 1080 } : template.platform === "PC" ? { width: 2560, height: 1440 } : { width: 1200, height: 720 };
+    const frame = figma.createFrame();
+    frame.resize(size.width, size.height);
+    frame.fills = [hexToSolidPaint("#1E1E1E")];
+    frame.clipsContent = true;
+    const bg = figma.createRectangle();
+    bg.name = "Bg";
+    bg.resize(size.width, size.height);
+    bg.fills = [hexToSolidPaint("#2F3338")];
+    frame.appendChild(bg);
+    const content = figma.createFrame();
+    content.name = "Content";
+    content.resize(Math.round(size.width * 0.72), Math.round(size.height * 0.66));
+    content.x = Math.round((size.width - content.width) / 2);
+    content.y = Math.round((size.height - content.height) / 2);
+    content.fills = [hexToSolidPaint("#3E4652")];
+    content.cornerRadius = 24;
+    content.clipsContent = true;
+    frame.appendChild(content);
+    const title = figma.createText();
+    await loadDefaultFont(title);
+    title.name = "TxtTitle";
+    title.characters = template.platform === "IOS" ? "IOS Template" : "PC Template";
+    title.fontSize = template.platform === "IOS" ? 52 : 64;
+    title.fills = [hexToSolidPaint("#FFFFFF")];
+    title.x = 64;
+    title.y = 56;
+    content.appendChild(title);
+    figma.currentPage.appendChild(frame);
+    return frame;
+  }
+  async function loadDefaultFont(text) {
+    const fontName = { family: "Inter", style: "Regular" };
+    try {
+      await figma.loadFontAsync(fontName);
+      text.fontName = fontName;
+    } catch (e) {
+      if (text.fontName !== figma.mixed) await figma.loadFontAsync(text.fontName);
+    }
+  }
+  function templateNodeName(template) {
+    const project = toFrameNameSegment(figma.root.name) || "Project";
+    const base = toFrameNameSegment(template.name.replace(/^Library\s*/i, "").replace(/^内置\s*/i, "")) || "Template";
+    if (template.platform === "None") return `${project}_${base}`;
+    return `${project}_${stripFramePlatformToken(base)}_${template.platform}`;
+  }
+  function placeAtViewportCenter(node) {
+    node.x = Math.round(figma.viewport.center.x - node.width / 2);
+    node.y = Math.round(figma.viewport.center.y - node.height / 2);
   }
   function isChildrenContainer(node) {
     return !!node && "children" in node && "appendChild" in node && "insertChild" in node;
