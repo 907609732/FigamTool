@@ -50,10 +50,14 @@
       .preset-switcher button.active { border-color: #0a66ff; color: #0a66ff; }
       .inline-action { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; align-items: end; }
       .variant-action { display: grid; gap: 8px; }
-      .variant-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-      .variant-buttons button { min-height: 34px; padding: 3px 4px; line-height: 14px; }
+      .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .panel-title-row h2 { margin: 0; font-size: 13px; text-transform: none; }
+      .panel-title-row .help-btn { flex: 0 0 auto; }
+      .variant-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .variant-buttons button { display: grid; gap: 3px; min-height: 58px; padding: 7px 8px; line-height: 14px; text-align: left; }
       .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .variant-buttons small { color: var(--figma-color-text-secondary, #666); font-size: 10px; }
+      .variant-buttons strong { font-size: 13px; }
+      .variant-buttons small { color: rgba(255, 255, 255, .86); font-size: 10px; }
       .template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .template-toolbar { display: flex; justify-content: flex-end; gap: 6px; }
       .template-toolbar button { width: auto; min-width: 72px; }
@@ -179,13 +183,16 @@
       <section id="tools">
         <div class="panel">
           <div class="variant-action">
-            <div class="variant-buttons">
-              <button class="primary" data-variant-mode="three" title="生成 State=Normal、Hover、Pressed"><strong>3状态</strong><small>N/H/P</small></button>
-              <button class="primary" data-variant-mode="four" title="生成 State=Normal、Hover、Pressed、Disabled"><strong>4状态</strong><small>+Disabled</small></button>
-              <button class="primary" data-variant-mode="six" title="生成 Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>6状态</strong><small>2x3</small></button>
-              <button class="primary" data-variant-mode="eight" title="生成 Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>8状态</strong><small>2x4</small></button>
+            <div class="panel-title-row">
+              <h2>一键按钮变体</h2>
+              <button id="variantHelpBtn" class="help-btn" title="查看四种变体模式的功能明细">？</button>
             </div>
-            <button id="variantHelpBtn" class="help-btn" title="查看四种变体模式的功能明细">？</button>
+            <div class="variant-buttons">
+              <button class="primary" data-variant-mode="three" title="跳转按钮：生成 State=Normal、Hover、Pressed"><strong>跳转按钮</strong><small>Normal / Hover / Pressed</small></button>
+              <button class="primary" data-variant-mode="four" title="跳转按钮带禁用态：生成 State=Normal、Hover、Pressed、Disabled"><strong>跳转按钮带禁用态</strong><small>Normal / Hover / Pressed / Disabled</small></button>
+              <button class="primary" data-variant-mode="six" title="选择按钮：生成 Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>选择按钮</strong><small>Unchecked + Checked，各 3 状态</small></button>
+              <button class="primary" data-variant-mode="eight" title="选择按钮带禁用态：生成 Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>选择按钮带禁用态</strong><small>Unchecked + Checked，各 4 状态</small></button>
+            </div>
           </div>
         </div>
       </section>
@@ -194,7 +201,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.27</span>
+            <span id="versionText">V0.1.28</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
