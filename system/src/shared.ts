@@ -146,6 +146,7 @@ export type UiToPluginMessage =
   | { type: "GENERATE_AI_NAMES"; options: RenameOptions; config: PluginConfig }
   | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig }
   | { type: "AUTO_NAME_FRAME"; config: PluginConfig }
+  | { type: "ADD_TEXT_CONTROL_PROPERTIES" }
   | { type: "CREATE_VARIANTS"; mode: VariantMode }
   | { type: "INSERT_TEMPLATE"; templateId: string; config: PluginConfig }
   | { type: "RESIZE_UI"; width: number; height: number };

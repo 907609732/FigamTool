@@ -18,6 +18,7 @@ import {
 
 const CONFIG_KEY = "ai-auto-namer-config";
 const PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
+const CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
 
 figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
 
@@ -109,6 +110,14 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
         message: `一键命名完成：画板 ${result.frameName}，命名 ${result.renamed} 个，解散 Group ${result.groups} 个，删除 Mask ${result.masks} 个，跳过 ${result.skipped} 个`
       });
       figma.notify(`一键命名完成：${result.frameName}`);
+      return;
+    }
+
+    if (message.type === "ADD_TEXT_CONTROL_PROPERTIES") {
+      const result = await addTextControlPropertiesToSelectedFrame();
+      const messageText = `文本属性完成：共 ${result.total} 个文本，新增 Text ${result.textAdded}，新增 Var ${result.varAdded}，已存在 ${result.existing}，冲突跳过 ${result.conflicts}`;
+      post({ type: "APPLY_RESULT", message: messageText });
+      figma.notify(messageText);
       return;
     }
 
@@ -647,6 +656,95 @@ async function autoNameFrame(
   figma.currentPage.selection = [root];
   if (translationResult.warning) figma.notify(translationResult.warning);
   return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+}
+
+interface CMPropertyDataContainer {
+  PropertyDatas: Record<string, unknown>;
+}
+
+function readCMContainer(node: SceneNode): CMPropertyDataContainer {
+  const raw = node.getPluginData(CM_PROPERTY_DATA_KEY);
+  if (!raw) return { PropertyDatas: {} };
+  try {
+    const parsed = JSON.parse(raw) as Partial<CMPropertyDataContainer>;
+    if (!parsed || typeof parsed !== "object") return { PropertyDatas: {} };
+    if (!parsed.PropertyDatas || typeof parsed.PropertyDatas !== "object") {
+      parsed.PropertyDatas = {};
+    }
+    return { PropertyDatas: parsed.PropertyDatas as Record<string, unknown> };
+  } catch {
+    return { PropertyDatas: {} };
+  }
+}
+
+function writeCMContainer(node: SceneNode, container: CMPropertyDataContainer) {
+  node.setPluginData(CM_PROPERTY_DATA_KEY, JSON.stringify(container));
+}
+
+function createCMTextPropertyData(node: TextNode) {
+  const maxLines = (node as TextNode & { maxLines?: number }).maxLines;
+  return {
+    Localize: false,
+    AdapterSwitch: false,
+    AdapterMode: 0,
+    MinFontSize: 0,
+    MaxLines: typeof maxLines === "number" ? maxLines : 0,
+    ForceWrapping: false,
+    WholeWordWrapping: false
+  };
+}
+
+async function addTextControlPropertiesToSelectedFrame(): Promise<{
+  total: number;
+  textAdded: number;
+  varAdded: number;
+  existing: number;
+  conflicts: number;
+}> {
+  await ensureCurrentPageLoaded();
+  const selection = Array.from(figma.currentPage.selection);
+  if (selection.length !== 1 || selection[0].type !== "FRAME") {
+    throw new Error("请选择一个画板");
+  }
+
+  const frame = selection[0];
+  const textNodes = frame.findAll((node) => node.type === "TEXT") as TextNode[];
+  let textAdded = 0;
+  let varAdded = 0;
+  let existing = 0;
+  let conflicts = 0;
+
+  for (const textNode of textNodes) {
+    const container = readCMContainer(textNode);
+    const properties = container.PropertyDatas;
+    const hasVar = Boolean(properties.CMVarPropertyData);
+    const hasText = Boolean(properties.CMTextPropertyData);
+    const hasTextConflict = Boolean(properties.CMRichTextPropertyData || properties.CMRollingNumberPropertyData);
+    let changed = false;
+
+    if (hasVar) {
+      existing += 1;
+    } else {
+      properties.CMVarPropertyData = {};
+      varAdded += 1;
+      changed = true;
+    }
+
+    if (hasTextConflict) {
+      conflicts += 1;
+    } else if (hasText) {
+      existing += 1;
+    } else {
+      properties.CMTextPropertyData = createCMTextPropertyData(textNode);
+      textAdded += 1;
+      changed = true;
+    }
+
+    if (changed) writeCMContainer(textNode, container);
+  }
+
+  figma.currentPage.selection = [frame];
+  return { total: textNodes.length, textAdded, varAdded, existing, conflicts };
 }
 
 function buildAutoFrameName(projectName: string, translatedFrameName: string, width: number, height: number): string {

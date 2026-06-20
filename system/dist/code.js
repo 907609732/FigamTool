@@ -272,6 +272,7 @@
   // src/code.ts
   var CONFIG_KEY = "ai-auto-namer-config";
   var PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
+  var CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
   figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
   void initialize();
   figma.on("selectionchange", async () => {
@@ -348,6 +349,13 @@
           message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u753B\u677F ${result.frameName}\uFF0C\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u89E3\u6563 Group ${result.groups} \u4E2A\uFF0C\u5220\u9664 Mask ${result.masks} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
         });
         figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.frameName}`);
+        return;
+      }
+      if (message.type === "ADD_TEXT_CONTROL_PROPERTIES") {
+        const result = await addTextControlPropertiesToSelectedFrame();
+        const messageText = `\u6587\u672C\u5C5E\u6027\u5B8C\u6210\uFF1A\u5171 ${result.total} \u4E2A\u6587\u672C\uFF0C\u65B0\u589E Text ${result.textAdded}\uFF0C\u65B0\u589E Var ${result.varAdded}\uFF0C\u5DF2\u5B58\u5728 ${result.existing}\uFF0C\u51B2\u7A81\u8DF3\u8FC7 ${result.conflicts}`;
+        post({ type: "APPLY_RESULT", message: messageText });
+        figma.notify(messageText);
         return;
       }
       if (message.type === "CREATE_VARIANTS") {
@@ -809,6 +817,75 @@
     figma.currentPage.selection = [root];
     if (translationResult.warning) figma.notify(translationResult.warning);
     return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+  }
+  function readCMContainer(node) {
+    const raw = node.getPluginData(CM_PROPERTY_DATA_KEY);
+    if (!raw) return { PropertyDatas: {} };
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return { PropertyDatas: {} };
+      if (!parsed.PropertyDatas || typeof parsed.PropertyDatas !== "object") {
+        parsed.PropertyDatas = {};
+      }
+      return { PropertyDatas: parsed.PropertyDatas };
+    } catch (e) {
+      return { PropertyDatas: {} };
+    }
+  }
+  function writeCMContainer(node, container) {
+    node.setPluginData(CM_PROPERTY_DATA_KEY, JSON.stringify(container));
+  }
+  function createCMTextPropertyData(node) {
+    const maxLines = node.maxLines;
+    return {
+      Localize: false,
+      AdapterSwitch: false,
+      AdapterMode: 0,
+      MinFontSize: 0,
+      MaxLines: typeof maxLines === "number" ? maxLines : 0,
+      ForceWrapping: false,
+      WholeWordWrapping: false
+    };
+  }
+  async function addTextControlPropertiesToSelectedFrame() {
+    await ensureCurrentPageLoaded();
+    const selection = Array.from(figma.currentPage.selection);
+    if (selection.length !== 1 || selection[0].type !== "FRAME") {
+      throw new Error("\u8BF7\u9009\u62E9\u4E00\u4E2A\u753B\u677F");
+    }
+    const frame = selection[0];
+    const textNodes = frame.findAll((node) => node.type === "TEXT");
+    let textAdded = 0;
+    let varAdded = 0;
+    let existing = 0;
+    let conflicts = 0;
+    for (const textNode of textNodes) {
+      const container = readCMContainer(textNode);
+      const properties = container.PropertyDatas;
+      const hasVar = Boolean(properties.CMVarPropertyData);
+      const hasText = Boolean(properties.CMTextPropertyData);
+      const hasTextConflict = Boolean(properties.CMRichTextPropertyData || properties.CMRollingNumberPropertyData);
+      let changed = false;
+      if (hasVar) {
+        existing += 1;
+      } else {
+        properties.CMVarPropertyData = {};
+        varAdded += 1;
+        changed = true;
+      }
+      if (hasTextConflict) {
+        conflicts += 1;
+      } else if (hasText) {
+        existing += 1;
+      } else {
+        properties.CMTextPropertyData = createCMTextPropertyData(textNode);
+        textAdded += 1;
+        changed = true;
+      }
+      if (changed) writeCMContainer(textNode, container);
+    }
+    figma.currentPage.selection = [frame];
+    return { total: textNodes.length, textAdded, varAdded, existing, conflicts };
   }
   function buildAutoFrameName(projectName, translatedFrameName, width, height) {
     const project = toFrameNameSegment(projectName) || "Project";

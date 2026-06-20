@@ -157,6 +157,10 @@
           <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
           <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
         </div>
+        <div class="panel grid">
+          <button id="addTextControlPropsBtn" class="primary" title="为选中画板内全部文本节点写入 TimiL2GameUI 可识别的程序控制和文本属性">一键挂文本属性</button>
+          <small>选中一个画板后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
+        </div>
       </section>
 
       <section id="templates">
@@ -722,6 +726,10 @@
         status("正在整理并一键命名画板...");
         post({ type: "AUTO_NAME_FRAME", config: config });
       }
+      function addTextControlProperties() {
+        status("正在给画板内文本挂程序控制和文本属性...");
+        post({ type: "ADD_TEXT_CONTROL_PROPERTIES" });
+      }
       function createVariants(mode) {
         var count = { three: 3, four: 4, six: 6, eight: 8 }[mode] || 3;
         status("正在制作 " + count + " 个变体...");
@@ -858,6 +866,7 @@
       document.getElementById("closeSettingHelpBtn").onclick = hideSettingHelp;
       document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
+      document.getElementById("addTextControlPropsBtn").onclick = addTextControlProperties;
       document.getElementById("translateBtn").onclick = translateAndRename;
       document.getElementById("exportCsvBtn").onclick = exportCsv;
       document.getElementById("importCsvBtn").onclick = importCsv;
