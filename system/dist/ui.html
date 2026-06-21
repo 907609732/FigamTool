@@ -79,6 +79,22 @@
       .term-card.active { border-color: #0a66ff; background: var(--figma-color-bg-hover, #f3f4f6); }
       .term-card strong, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .editor-shell { display: grid; gap: 10px; }
+      .editor-card { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; background: rgba(10, 102, 255, .03); }
+      .editor-card .panel-title-row span { color: var(--figma-color-text-secondary, #666); font-size: 11px; }
+      .editor-actions { display: grid; gap: 8px; }
+      .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .section-title h3 { font-size: 12px; }
+      .section-title span { color: var(--figma-color-text-secondary, #666); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .quick-strip { display: grid; gap: 8px; padding: 8px; border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; background: var(--figma-color-bg, #fff); }
+      .fold-stack { display: grid; gap: 8px; }
+      .fold-panel { border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; background: var(--figma-color-bg, #fff); }
+      .fold-panel[open] { background: rgba(0, 0, 0, .015); }
+      .fold-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; cursor: pointer; list-style: none; font-weight: 700; }
+      .fold-summary::-webkit-details-marker { display: none; }
+      .fold-summary::after { content: "展开"; color: var(--figma-color-text-secondary, #666); font-size: 11px; font-weight: 400; }
+      .fold-panel[open] .fold-summary::after { content: "收起"; }
+      .fold-body { display: grid; gap: 8px; padding: 0 10px 10px; }
       .compact-row { display: grid; grid-template-columns: 84px 1fr 28px; gap: 6px; align-items: end; margin-bottom: 8px; }
       .prop-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
       .prop-line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
@@ -147,7 +163,7 @@
               </div>
             </div>
             <fieldset>
-              <legend>命名和共享属性</legend>
+              <legend>命名</legend>
               <div id="termEditor" class="grid"></div>
             </fieldset>
           </div>
@@ -197,7 +213,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.31</span>
+            <span id="versionText">V0.1.32</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -492,32 +508,53 @@
         var v = Object.assign({}, defaultValues, preset.values || {});
         var enabled = preset.enabled || {};
         document.getElementById("termEditor").innerHTML =
-          '<h3>词条设置</h3>' +
-          '<div class="two grid">' +
-            '<label>词条单词/节点名<input id="termWord" value="' + esc(entry.word) + '"></label>' +
-            '<label>显示名称<input id="termLabel" value="' + esc(entry.label) + '"></label>' +
-            '<label>节点类型<select id="termKind">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + '>' + kindLabel(kind) + '</option>'; }).join("") + '</select></label>' +
-            '<label>说明<input id="termDescription" value="' + esc(entry.description) + '"></label>' +
-          '</div>' +
-          '<h3>共享属性方案</h3>' +
-          '<div class="preset-switcher">' + config.propertyPresets.map(function(item) { return '<button class="' + (item.id === preset.id ? "active" : "") + '" data-preset-id="' + item.id + '">' + esc(item.name) + '</button>'; }).join("") + '</div>' +
-          '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
-          '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击任意词条时应用当前属性方案</label>' +
-          '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
-          '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Position</span><button id="positionZeroBtn">一键归零</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
-          '<div class="prop-grid">' +
-            positionProp(v.positionX, v.positionY, enabled.position) +
-            prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
-            prop("fontStyle", "字重", "text", v.fontStyle, enabled.fontStyle) +
-            prop("fontSize", "字号", "number", v.fontSize, enabled.fontSize) +
-            prop("lineHeightPercent", "行高%", "number", v.lineHeightPercent, enabled.lineHeightPercent || enabled.lineHeightPx) +
-            prop("letterSpacing", "字距", "number", v.letterSpacing, enabled.letterSpacing) +
-            prop("textFill", "颜色", "text", v.textFill, enabled.textFill) +
-            percentProp("opacity", "透明度", v.opacity, enabled.opacity) +
-            selectProp("textAlignHorizontal", "横向对齐", v.textAlignHorizontal, enabled.textAlignHorizontal, [["LEFT","Left"],["CENTER","Center"],["RIGHT","Right"],["JUSTIFIED","Justify"]]) +
-            selectProp("textAlignVertical", "纵向对齐", v.textAlignVertical, enabled.textAlignVertical, [["TOP","Top"],["CENTER","Middle"],["BOTTOM","Bottom"]]) +
-            prop("cornerRadius", "圆角", "number", v.cornerRadius, enabled.cornerRadius) +
-            constraintsProp(v.constraintsHorizontal, v.constraintsVertical, enabled.constraints) +
+          '<div class="editor-shell">' +
+            '<div class="editor-card">' +
+              '<div class="panel-title-row"><h2>命名与方案</h2><span>当前词条：' + esc(entry.word) + '</span></div>' +
+              '<div class="editor-actions">' +
+                '<div class="section-title"><h3>当前属性方案</h3><span>' + esc(preset.name) + '</span></div>' +
+                '<div class="preset-switcher">' + config.propertyPresets.map(function(item) { return '<button class="' + (item.id === preset.id ? "active" : "") + '" data-preset-id="' + item.id + '">' + esc(item.name) + '</button>'; }).join("") + '</div>' +
+                '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
+                '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击任意词条时同步套用当前方案</label>' +
+              '</div>' +
+            '</div>' +
+            '<div class="quick-strip">' +
+              '<div class="section-title"><h3>快捷属性</h3><span>高频项直接改，细调再展开下面</span></div>' +
+              '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Position</span><button id="positionZeroBtn">一键归零</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
+            '</div>' +
+            '<div class="fold-stack">' +
+              '<details class="fold-panel">' +
+                '<summary class="fold-summary">编辑当前词条</summary>' +
+                '<div class="fold-body">' +
+                  '<div class="two grid">' +
+                    '<label>词条单词/节点名<input id="termWord" value="' + esc(entry.word) + '"></label>' +
+                    '<label>显示名称<input id="termLabel" value="' + esc(entry.label) + '"></label>' +
+                    '<label>节点类型<select id="termKind">' + nodeKinds.map(function(kind) { return '<option value="' + kind + '" ' + (kind === entry.kind ? "selected" : "") + '>' + kindLabel(kind) + '</option>'; }).join("") + '</select></label>' +
+                    '<label>说明<input id="termDescription" value="' + esc(entry.description) + '"></label>' +
+                  '</div>' +
+                '</div>' +
+              '</details>' +
+              '<details class="fold-panel">' +
+                '<summary class="fold-summary">编辑当前属性方案</summary>' +
+                '<div class="fold-body">' +
+                  '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
+                  '<div class="prop-grid">' +
+                    positionProp(v.positionX, v.positionY, enabled.position) +
+                    prop("fontFamily", "字体", "text", v.fontFamily, enabled.fontFamily) +
+                    prop("fontStyle", "字重", "text", v.fontStyle, enabled.fontStyle) +
+                    prop("fontSize", "字号", "number", v.fontSize, enabled.fontSize) +
+                    prop("lineHeightPercent", "行高%", "number", v.lineHeightPercent, enabled.lineHeightPercent || enabled.lineHeightPx) +
+                    prop("letterSpacing", "字距", "number", v.letterSpacing, enabled.letterSpacing) +
+                    prop("textFill", "颜色", "text", v.textFill, enabled.textFill) +
+                    percentProp("opacity", "透明度", v.opacity, enabled.opacity) +
+                    selectProp("textAlignHorizontal", "横向对齐", v.textAlignHorizontal, enabled.textAlignHorizontal, [["LEFT","Left"],["CENTER","Center"],["RIGHT","Right"],["JUSTIFIED","Justify"]]) +
+                    selectProp("textAlignVertical", "纵向对齐", v.textAlignVertical, enabled.textAlignVertical, [["TOP","Top"],["CENTER","Middle"],["BOTTOM","Bottom"]]) +
+                    prop("cornerRadius", "圆角", "number", v.cornerRadius, enabled.cornerRadius) +
+                    constraintsProp(v.constraintsHorizontal, v.constraintsVertical, enabled.constraints) +
+                  '</div>' +
+                '</div>' +
+              '</details>' +
+            '</div>' +
           '</div>';
         ["termWord","termLabel","termKind","termDescription"].forEach(function(id) {
           document.getElementById(id).onchange = syncTermEditor;
