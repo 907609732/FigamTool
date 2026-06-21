@@ -1,34 +1,289 @@
-# FigamTool
+# FigamTool 交互文档
 
-Figma 节点 AI 命名和属性批量设置工具。
+## 产品定位
 
-## 根目录结构
+FigamTool 是一个面向 Figma UI 资源整理的插件，用来把节点命名、常用属性设置、画板整理和组件变体制作集中到一个工具里。目标是减少重复点击，让常用命名和属性方案可以复用。
 
-根目录只保留：
+## 窗口结构
 
-- `manifest.json`：Figma 导入插件时使用的配置文件。
-- `system/`：源码、构建产物、npm 配置、脚本和本地测试配置都放在这里。
-- `README.md`：项目说明。
-- `交互文档.md`：产品功能和交互说明，后续改功能先看这里。
+插件顶部是页面切换：
 
-## 常用命令
+- `命名`：选择词库词条，改节点名，并可同步应用当前共享属性方案。
+- `模板`：插入 Library 模板或插件内置模板。
+- `功能`：画板整理、文本属性挂载和组件变体制作。
+- `刷新`：重新读取当前选中节点。
+- `设置`：API、翻译、软件信息和说明入口。
 
-所有 npm 命令都在 `system/` 目录执行：
+底部状态区显示当前准备状态、错误信息和已选中节点数量。
 
-```bash
-cd system
-npm run typecheck
-npm run build
-npm run build:test
+## 命名页
+
+命名页现在按“高频优先”重排，默认只显示日常最常用的内容。低频配置收进折叠区，避免右侧过长、过挤。
+
+### 选中节点识别
+
+插件会读取 Figma 当前选中的节点，并判断节点类型：
+
+- `TEXT`：只推荐文本词库。
+- `IMAGE`：只推荐图片词库。
+- `FRAME`：推荐 Frame 词库。
+- `COMPONENT`：推荐组件词库。
+- `SHAPE`：推荐图形词库。
+- 其他类型：推荐通用词库。
+
+如果没有选中节点，会显示未选中状态。
+
+### 词库点击行为
+
+点击左侧词库里的词条时：
+
+1. 将选中节点重命名为该词条的单词。
+2. 如果开启了“点击任意词条时同步套用当前方案”，会同时应用右侧当前共享属性方案。
+
+词条本身只保存命名单词、显示名称、节点类型和说明。字体、颜色、位置等属性不再跟单个词条绑定，而是共用右侧属性方案。
+
+### 词库管理
+
+支持：
+
+- 新增词条。
+- 复制词条。
+- 删除词条。
+- 导出词库方案。
+- 导入词库方案。
+
+导入导出用于在不同电脑或项目之间复用词库。
+
+## 共享属性方案
+
+右侧是所有词条共用的属性方案。可以创建多套方案并快速切换。
+
+### 默认可见区域
+
+命名页右侧默认显示：
+
+- `中文翻译命名`
+- 当前属性方案切换按钮
+- 新增/复制/删除方案
+- `点击任意词条时同步套用当前方案`
+- 快捷属性区
+
+### 折叠高级区域
+
+右侧底部提供两个默认收起的折叠块：
+
+- `编辑当前词条`
+- `编辑当前属性方案`
+
+这样日常使用时只需要选节点、点词条、必要时切方案；只有维护词库或细调属性时才展开高级区。
+
+### 方案管理
+
+支持：
+
+- 新增方案。
+- 复制方案。
+- 删除方案。
+- 修改方案名称。
+- 点击方案标签切换当前方案。
+
+### 可配置属性
+
+每个属性左侧都有勾选框。只有勾选的属性会在点击词条时应用到节点。
+
+当前支持：
+
+- `Position`：设置节点 `X / Y`。
+- `字体`：字体家族。
+- `字重`：字体样式。
+- `字号`：文本字号。
+- `行高%`：文本行高百分比，默认 150。
+- `字距`：字符间距。
+- `颜色`：文本填充色。
+- `透明度`：0% 到 100%。
+- `横向对齐`：Left、Center、Right、Justify。
+- `纵向对齐`：Top、Middle、Bottom。
+- `圆角`：节点圆角。
+- `Constraints`：横向和纵向约束。
+
+### 快捷按钮
+
+属性区顶部提供常用快捷按钮：
+
+- `28 / 32 / 48`：快速设置字号。
+- `FAFAFAFA`：快速设置常用颜色。
+- `一键归零`：自动勾选 Position，并设置 `X=0`、`Y=0`。
+- `一键居中`：自动勾选 Constraints，并设置横向、纵向 Constraints 都为居中。
+
+## 中文翻译命名
+
+在命名页输入中文后，点击“翻译命名”：
+
+1. 使用百度翻译 API 将中文转为英文。
+2. 将翻译结果转换成适合作为节点名的英文格式。
+3. 应用到当前选中节点。
+
+百度翻译配置在设置页填写：
+
+- App ID。
+- 密钥。
+- From，默认 `zh`。
+- To，默认 `en`。
+
+## 功能页
+
+功能页现在包含三类能力：
+
+- 画板整理命名
+- 文本加程序控制属性
+- 一键按钮变体
+
+### 一键整理并命名画板
+
+用于选中一个画板后自动改名。
+
+命名规则：
+
+```text
+Figma工程名_画板中文名翻译英文_平台后缀
 ```
 
-正式导入 Figma 时，选择根目录的 `manifest.json`。
+平台后缀判断：
 
-本机临时 API 测试时：
+- `2560 x 1440`：`PC`
+- `2340 x 1080`：`IOS`
+- 其他尺寸：`Item`
 
-1. 复制 `system/.figmatool-test-config.example.json` 为 `system/.figmatool-test-config.json`。
-2. 在 `system/.figmatool-test-config.json` 中填写百度翻译和 Kimi 测试凭据。
-3. 运行 `cd system && npm run build:test`。
-4. 在 Figma 开发插件中导入 `system/manifest.local.json`。
+主画板名称保留下划线 `_`。画板内部子节点命名时不保留下划线，避免资源层级过长或命名混乱。
 
-`system/.figmatool-test-config.json`、`system/dist-local/` 和 `system/manifest.local.json` 已加入 `.gitignore`，不会进入公开仓库。
+如果百度翻译失败，整理流程会尽量使用原中文名继续，不让整个操作直接中断。
+
+### 一键挂文本加程序控制属性
+
+用于给 TimiL2GameUI 项目插件补充可识别的文本元数据。
+
+兼容说明：Figma 的普通 `pluginData` 会按插件 ID 隔离。为了让 TimiL2GameUI 项目插件能读取到这里写入的数据，当前插件 manifest 使用与项目插件一致的 ID：`1264137593818559663`。
+
+操作方式：
+
+1. 选中一个画板 `FRAME`。
+2. 点击 `一键挂文本加程序控制属性`。
+3. 插件递归查找画板内全部 `TEXT` 节点。
+4. 给每个文本节点写入 `CMPropertyDataContainer`。
+
+写入的属性：
+
+- `CMVarPropertyData`：程序控制属性。
+- `CMTextPropertyData`：文本属性。
+
+如果文本节点已经有 `CMRichTextPropertyData` 或 `CMRollingNumberPropertyData`，会跳过文本属性，避免破坏已有富文本或滚动数字配置。
+
+### 一键变体
+
+用于把选中的组件或 Frame 快速制作成组件变体。
+
+如果选中的是 Frame，会先自动执行 Create component，再制作变体。
+
+功能页直接展示 4 个按钮，点击对应按钮即可执行，不需要先选下拉框再点确认。
+
+### 3 个变体
+
+适合普通跳转按钮：
+
+- `State=Normal`
+- `State=Hover`
+- `State=Pressed`
+
+### 4 个变体
+
+适合需要禁用态的普通按钮：
+
+- `State=Normal`
+- `State=Hover`
+- `State=Pressed`
+- `State=Disabled`
+
+### 6 个变体
+
+适合选择按钮：
+
+- `State=Normal, Checked=Unchecked`
+- `State=Hover, Checked=Unchecked`
+- `State=Pressed, Checked=Unchecked`
+- `State=Normal, Checked=Checked`
+- `State=Hover, Checked=Checked`
+- `State=Pressed, Checked=Checked`
+
+### 8 个变体
+
+适合需要禁用态的选择按钮：
+
+- `State=Normal, Checked=Unchecked`
+- `State=Hover, Checked=Unchecked`
+- `State=Pressed, Checked=Unchecked`
+- `State=Disabled, Checked=Unchecked`
+- `State=Normal, Checked=Checked`
+- `State=Hover, Checked=Checked`
+- `State=Pressed, Checked=Checked`
+- `State=Disabled, Checked=Checked`
+
+功能页按钮旁边的 `？` 会展示上述说明。
+
+## 模板页
+
+用于试用两套通用模板方案：
+
+- `Library 模板`：从已发布的 Figma Library 组件导入，适合需要高还原度的通用画板或组件。
+- `内置模板`：插件直接创建基础结构，适合不依赖 Library 的快速画板占位。
+
+默认提供 4 个按钮：
+
+- `Library PC画板`：需要在设置里填写 Component Key，默认插入后打散。
+- `Library IOS画板`：需要在设置里填写 Component Key，默认插入后打散。
+- `内置 PC画板`：直接创建 `2560 x 1440` 的基础画板。
+- `内置 IOS画板`：直接创建 `2340 x 1080` 的基础画板。
+
+模板页右上角的 `模板设置` 按钮用于配置 Library Component Key、模板来源、平台和插入后是否打散。配置界面内可以点击 `返回模板` 回到按钮列表。
+
+插入后会放到当前视野中心并自动选中新节点。PC/IOS 画板命名使用：
+
+```text
+当前Figma工程名_模板名_PC/IOS
+```
+
+## 设置页
+
+设置页收纳顶部信息和 API 配置，避免主工作区过挤。
+
+包含：
+
+- 软件版本号：`V数字.数字.小版本`。
+- `By五成`。
+- 词库链接。
+- 百度翻译 API 配置。
+- AI/Kimi API 配置。
+- 每个设置旁边的 `？` 说明。
+
+## 错误提示原则
+
+错误提示应该尽量说明：
+
+- 哪个功能失败。
+- 是网络、配置、接口返回还是节点类型不支持。
+- 用户下一步可以怎么处理。
+
+例如：
+
+- 百度翻译网络失败时，提示检查 Figma 插件 manifest 是否允许 `https://fanyi-api.baidu.com`。
+- 未配置 API 时，提示去设置页填写。
+- 未选中节点时，提示先选择节点。
+
+## 当前工程结构
+
+```text
+.
+├── manifest.json
+├── README.md
+├── 交互文档.md
+└── system/
+```
