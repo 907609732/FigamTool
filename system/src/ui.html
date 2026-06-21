@@ -65,6 +65,9 @@
       .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
       .panel-title-row h2 { margin: 0; font-size: 13px; text-transform: none; }
       .panel-title-row .help-btn { flex: 0 0 auto; }
+      .panel-title-row .title-actions { display: flex; align-items: center; gap: 6px; }
+      .button-help-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
+      .button-help-row > button:first-child { min-width: 0; }
       .variant-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .variant-buttons button { display: grid; gap: 3px; min-height: 58px; padding: 7px 8px; line-height: 14px; text-align: left; }
       .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -152,7 +155,10 @@
         <div class="workbench">
           <div class="sticky-tools">
             <fieldset>
-              <legend>范围</legend>
+              <div class="panel-title-row">
+                <h2>范围</h2>
+                <button class="help-btn" data-setting-help="范围" data-setting-description="这里决定命名会作用到哪里。仅选中节点只处理当前选择；直接子级只处理下一层；全部子节点会递归处理整个容器。Locked 和 Hidden 勾上后会跳过锁定或隐藏节点。" title="查看范围说明">？</button>
+              </div>
               <div class="grid">
                 <label><select id="scope"><option value="selection">仅选中节点</option><option value="children">直接子级</option><option value="deep">全部子节点</option></select></label>
                 <div class="two grid">
@@ -161,6 +167,10 @@
                 </div>
               </div>
             </fieldset>
+            <div class="panel-title-row">
+              <h2>词条操作</h2>
+              <button class="help-btn" data-setting-help="词条操作" data-setting-description="新增用于新建一个命名词条；复制会基于当前词条快速做一个副本；删除会移除当前词条并二次确认；右侧齿轮会打开词库与属性方案的完整设置页面。" title="查看词条操作说明">？</button>
+            </div>
             <div class="compact-actions four">
               <button id="addTermBtn" class="icon-btn" title="新增词条">新增</button>
               <button id="duplicateTermBtn" class="icon-btn" title="复制词条">复制</button>
@@ -174,8 +184,12 @@
               <div id="selectionPanel" class="panel selection-panel-compact"></div>
               <div class="panel">
                 <div class="inline-action">
+                  <div class="panel-title-row">
+                    <h2>中文翻译命名</h2>
+                    <button class="help-btn" data-setting-help="中文翻译命名" data-setting-description="输入中文后可以直接翻译成英文节点名。翻译命名只改名字；翻译并挂属性会在改名后继续给文本挂程序控制和文本属性。勾选自动带入后，选中单个节点时会把节点名或文本内容自动放进输入框。" title="查看中文翻译命名说明">？</button>
+                  </div>
                   <div class="translate-actions">
-                    <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
+                    <label>输入内容<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
                     <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
                     <button id="translateAndTagBtn" title="翻译命名后，继续给当前选中内容里的文本挂文本属性和程序控制属性">翻译并挂属性</button>
                   </div>
@@ -184,7 +198,10 @@
               </div>
             </div>
             <fieldset>
-              <legend>命名</legend>
+              <div class="panel-title-row">
+                <h2>命名</h2>
+                <button class="help-btn" data-setting-help="命名与方案" data-setting-description="左边点词条会直接给当前节点改名。右边可以切换当前共享属性方案；如果开启“点击任意词条时同步套用当前方案”，改名时会顺手把属性也一起套上。" title="查看命名与方案说明">？</button>
+              </div>
               <div id="termEditor" class="grid"></div>
             </fieldset>
           </div>
@@ -193,13 +210,24 @@
 
       <section id="templates">
         <div id="templateHome" class="panel grid">
-          <div class="template-toolbar"><button id="templateSettingsBtn" title="配置 Library Component Key 和插入后是否打散">模板设置</button></div>
+          <div class="panel-title-row">
+            <h2>模板</h2>
+            <div class="title-actions">
+              <button class="help-btn" data-setting-help="模板" data-setting-description="模板页支持两种方式：Library 模板会从你配置好的组件库导入通用画板；内置模板会直接生成基础 PC 或 IOS 画板。可以先都试用，再决定保留哪种工作流。" title="查看模板说明">？</button>
+              <button id="templateSettingsBtn" title="配置 Library Component Key 和插入后是否打散">模板设置</button>
+            </div>
+          </div>
           <div class="template-grid" id="templateButtons"></div>
           <small>Library 模板需要先在设置里填写 Component Key；内置模板不需要任何配置，可直接插入基础 PC/IOS 画板。</small>
         </div>
         <div id="templateSettingsView" class="panel grid" hidden>
-          <div class="template-toolbar"><button id="backToTemplatesBtn" title="返回模板按钮列表">返回模板</button></div>
-          <h2>模板配置</h2>
+          <div class="panel-title-row">
+            <h2>模板配置</h2>
+            <div class="title-actions">
+              <button class="help-btn" data-setting-help="模板配置" data-setting-description="这里可以修改模板按钮名、来源、平台、Library Component Key，以及插入后是否自动打散。Library 模板要先填好组件 Key 才能真正导入。" title="查看模板配置说明">？</button>
+              <button id="backToTemplatesBtn" title="返回模板按钮列表">返回模板</button>
+            </div>
+          </div>
           <div id="templateSettings" class="template-settings"></div>
         </div>
       </section>
@@ -207,11 +235,17 @@
       <section id="tools">
         <div id="toolsSelectionPanel" class="panel"></div>
         <div class="panel grid">
-          <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
+          <div class="button-help-row">
+            <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
+            <button class="help-btn" data-setting-help="一键整理并命名画板" data-setting-description="选中一个主画板后执行。插件会先判断画板分辨率是 IOS、PC 还是 Item，再按“工程名_英文画板名_平台”给主画板命名，同时递归整理内部节点名称。" title="查看一键整理并命名画板说明">？</button>
+          </div>
           <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
         </div>
         <div class="panel grid">
-          <button id="addTextControlPropsBtn" class="primary" title="为当前选中内容里的全部文本节点写入 TimiL2GameUI 可识别的文本属性和程序控制属性">一键挂文本加程序控制属性</button>
+          <div class="button-help-row">
+            <button id="addTextControlPropsBtn" class="primary" title="为当前选中内容里的全部文本节点写入 TimiL2GameUI 可识别的文本属性和程序控制属性">一键挂文本加程序控制属性</button>
+            <button class="help-btn" data-setting-help="一键挂文本加程序控制属性" data-setting-description="这个功能是给项目里的另一个插件做辅助。选中一个画板、容器，或者直接选中文本后执行，插件会递归找到内部 TEXT 节点并写入程序控制属性和文本属性。" title="查看一键挂文本加程序控制属性说明">？</button>
+          </div>
           <small>可直接选中文本节点，或选中包含文本的画板/容器后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
         </div>
         <div class="panel">
@@ -320,7 +354,10 @@
       </div>
       <div id="lexiconSettingsModal" class="modal-overlay" hidden>
         <div class="modal-card">
-          <h2>词库与属性方案设置</h2>
+          <div class="panel-title-row">
+            <h2>词库与属性方案设置</h2>
+            <button class="help-btn" data-setting-help="词库与属性方案设置" data-setting-description="这个窗口主要放低频配置：词库导入导出、JSON 配置、属性方案写回项目等。平时命名时不需要一直打开它，需要维护词库时再进来就行。" title="查看词库与属性方案设置说明">？</button>
+          </div>
           <p>这里集中放词库导入导出、属性方案导入导出和项目配置写入。平时命名时不用一直占着主界面。</p>
           <div class="actions">
             <button id="exportCsvBtn">导出 Excel(CSV)</button>
@@ -569,7 +606,7 @@
         document.getElementById("termEditor").innerHTML =
           '<div class="editor-shell">' +
             '<div class="editor-card">' +
-              '<div class="panel-title-row"><h2>命名与方案</h2><span>当前词条：' + esc(entry.word) + '</span></div>' +
+              '<div class="panel-title-row"><h2>命名与方案</h2><div class="title-actions"><span>当前词条：' + esc(entry.word) + '</span><button class="help-btn" data-setting-help="命名与方案" data-setting-description="这里是高频使用区。先在左侧点词条改名，再在这里切换当前属性方案。如果勾上同步套用当前方案，点词条时就会改名并同时应用属性。">？</button></div></div>' +
               '<div class="editor-actions">' +
                 '<div class="section-title"><h3>当前属性方案</h3><span>' + esc(preset.name) + '</span></div>' +
                 '<div class="preset-switcher">' + config.propertyPresets.map(function(item) { return '<button class="' + (item.id === preset.id ? "active" : "") + '" data-preset-id="' + item.id + '">' + esc(item.name) + '</button>'; }).join("") + '</div>' +
@@ -578,13 +615,14 @@
               '</div>' +
             '</div>' +
             '<div class="quick-strip">' +
-              '<div class="section-title"><h3>快捷属性</h3><span>高频项直接改，细调再展开下面</span></div>' +
+              '<div class="panel-title-row"><h3>快捷属性</h3><div class="title-actions"><span>高频项直接改，细调再展开下面</span><button class="help-btn" data-setting-help="快捷属性" data-setting-description="这里保留最常用的几个快捷操作：字号按钮、常用颜色、一键归零 Position、一键居中 Constraints。它们修改的是当前属性方案，不是只改当前一个节点。">？</button></div></div>' +
               '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Position</span><button id="positionZeroBtn">一键归零</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
             '</div>' +
             '<div class="fold-stack">' +
               '<details class="fold-panel">' +
                 '<summary class="fold-summary">编辑当前词条</summary>' +
                 '<div class="fold-body">' +
+                  '<div class="panel-title-row"><h3>词条详细设置</h3><button class="help-btn" data-setting-help="编辑当前词条" data-setting-description="这里是维护词库时才会用到的低频设置。可以修改词条英文、显示名称、适用节点类型和备注说明。平时直接点左边词条改名即可，不一定要进来。">？</button></div>' +
                   '<div class="two grid">' +
                     '<label>词条单词/节点名<input id="termWord" value="' + esc(entry.word) + '"></label>' +
                     '<label>显示名称<input id="termLabel" value="' + esc(entry.label) + '"></label>' +
@@ -596,6 +634,7 @@
               '<details class="fold-panel">' +
                 '<summary class="fold-summary">编辑当前属性方案</summary>' +
                 '<div class="fold-body">' +
+                  '<div class="panel-title-row"><h3>属性方案详细设置</h3><button class="help-btn" data-setting-help="编辑当前属性方案" data-setting-description="这里是完整属性编辑区。你可以配置方案名称、字体、字重、字号、行高、颜色、透明度、对齐、圆角、Position、Constraints 等，并决定这些字段在点词条时是否一起应用。">？</button></div>' +
                   '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
                   '<div class="prop-grid">' +
                     positionProp(v.positionX, v.positionY, enabled.position) +
@@ -643,6 +682,7 @@
           setValue("prop-constraintsVertical", "CENTER");
           syncPropertyPreset();
         };
+        bindHelpButtons(document.getElementById("termEditor"));
       }
       function prop(key, label, type, value, enabled) {
         return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input id="prop-' + key + '" data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
@@ -910,6 +950,14 @@
         document.getElementById("settingHelpDescription").textContent = description;
         document.getElementById("settingHelp").hidden = false;
       }
+      function bindHelpButtons(root) {
+        (root || document).querySelectorAll("[data-setting-help]").forEach(function(btn) {
+          btn.onclick = function(event) {
+            event.preventDefault();
+            showSettingHelp(btn.dataset.settingHelp, btn.dataset.settingDescription);
+          };
+        });
+      }
       function hideSettingHelp() {
         document.getElementById("settingHelp").hidden = true;
       }
@@ -1044,12 +1092,7 @@
       document.getElementById("variantHelpBtn").onclick = function() { showVariantHelp(true); };
       document.getElementById("closeVariantHelpBtn").onclick = function() { showVariantHelp(false); };
       document.getElementById("variantHelp").onclick = function(event) { if (event.target.id === "variantHelp") showVariantHelp(false); };
-      document.querySelectorAll("[data-setting-help]").forEach(function(btn) {
-        btn.onclick = function(event) {
-          event.preventDefault();
-          showSettingHelp(btn.dataset.settingHelp, btn.dataset.settingDescription);
-        };
-      });
+      bindHelpButtons(document);
       document.getElementById("closeSettingHelpBtn").onclick = hideSettingHelp;
       document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
       document.getElementById("cancelDeleteTermBtn").onclick = hideDeleteTermConfirm;
