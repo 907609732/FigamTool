@@ -37,8 +37,13 @@
       .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
       .meta span, .meta a { white-space: nowrap; }
       .grid { display: grid; gap: 8px; }
-      .workbench { display: grid; grid-template-columns: minmax(260px, 46%) minmax(0, 54%); gap: 8px; align-items: start; }
+      .workbench { display: grid; grid-template-columns: minmax(240px, 42%) minmax(0, 58%); gap: 8px; align-items: start; }
       .sticky-tools { position: sticky; top: 0; z-index: 1; display: grid; gap: 8px; background: var(--figma-color-bg, #fff); }
+      .lexicon-main { display: grid; gap: 8px; }
+      .lexicon-topbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 28%); gap: 8px; align-items: start; }
+      .selection-panel-compact { margin: 0; padding: 8px; }
+      .selection-panel-compact .selection-item { margin-bottom: 4px; }
+      .selection-panel-compact .selection-item:last-child { margin-bottom: 0; }
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
       .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
@@ -121,6 +126,7 @@
       #selectionText { flex: 0 1 auto; text-align: right; }
       .resize-grip { position: fixed; right: 0; bottom: 0; width: 24px; height: 24px; cursor: nwse-resize; opacity: .7; }
       .resize-grip::before { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid var(--figma-color-text-secondary, #777); border-bottom: 2px solid var(--figma-color-text-secondary, #777); }
+      @media (max-width: 520px) { .lexicon-topbar { grid-template-columns: 1fr; } }
       @media (max-width: 360px) { .workbench { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
     </style>
   </head>
@@ -141,7 +147,6 @@
       <section id="lexicon" class="active">
         <div class="workbench">
           <div class="sticky-tools">
-            <div id="selectionPanel" class="panel"></div>
             <fieldset>
               <legend>范围</legend>
               <div class="grid">
@@ -159,16 +164,19 @@
             </div>
             <div id="termList" class="term-list"></div>
           </div>
-          <div class="grid">
-            <div class="panel">
-              <div class="inline-action">
-                <div class="translate-actions">
-                  <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
-                  <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
-                  <button id="translateAndTagBtn" title="翻译命名后，继续给当前选中内容里的文本挂文本属性和程序控制属性">翻译并挂属性</button>
+          <div class="lexicon-main">
+            <div class="lexicon-topbar">
+              <div class="panel">
+                <div class="inline-action">
+                  <div class="translate-actions">
+                    <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
+                    <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
+                    <button id="translateAndTagBtn" title="翻译命名后，继续给当前选中内容里的文本挂文本属性和程序控制属性">翻译并挂属性</button>
+                  </div>
+                  <label class="check"><input id="autoFillTranslateText" type="checkbox">选中节点时自动带入输入框</label>
                 </div>
-                <label class="check"><input id="autoFillTranslateText" type="checkbox">选中节点时自动带入输入框</label>
               </div>
+              <div id="selectionPanel" class="panel selection-panel-compact"></div>
             </div>
             <fieldset>
               <legend>命名</legend>
