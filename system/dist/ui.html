@@ -48,7 +48,9 @@
       .three { grid-template-columns: repeat(3, 1fr); }
       .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
       .compact-actions { display: grid; grid-template-columns: repeat(3, minmax(44px, 1fr)); gap: 6px; }
-      .compact-actions.four { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+      .compact-actions.four { grid-template-columns: repeat(3, minmax(44px, 1fr)) 38px; }
+      .compact-actions button { min-height: 28px; }
+      .icon-only-btn { width: 38px; min-width: 38px; padding: 0; font-size: 15px; line-height: 1; }
       .quick-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
       .quick-row button { width: auto; min-width: 44px; min-height: 26px; padding: 0 8px; }
       .preset-switcher { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -85,10 +87,10 @@
       .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
       .selection-item span, footer, small { color: var(--figma-color-text-secondary, #666); }
       .term-list { display: grid; gap: 6px; }
-      .term-card { position: relative; display: grid; gap: 2px; min-height: 44px; padding: 7px 8px; text-align: left; }
+      .term-card { position: relative; display: grid; gap: 1px; min-height: 42px; padding: 6px 8px; text-align: left; }
       .term-card.active { border-color: #0a66ff; background: var(--figma-color-bg-hover, #f3f4f6); }
       .term-card strong, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; line-height: 13px; }
       .term-card .term-mode { position: absolute; top: 8px; right: 8px; max-width: 88px; padding: 0; background: transparent; color: var(--figma-color-text-secondary, #8a8f98); font-size: 10px; line-height: 12px; text-align: right; opacity: .72; }
       .term-card .term-meta { padding-right: 94px; }
       .editor-shell { display: grid; gap: 10px; }
@@ -163,7 +165,7 @@
               <button id="addTermBtn" class="icon-btn" title="新增词条">新增</button>
               <button id="duplicateTermBtn" class="icon-btn" title="复制词条">复制</button>
               <button id="deleteTermBtn" class="icon-btn danger" title="删除词条">删除</button>
-              <button id="lexiconSettingsBtn" class="icon-btn" title="打开词库与属性方案设置">设置</button>
+              <button id="lexiconSettingsBtn" class="icon-btn icon-only-btn" title="打开词库与属性方案设置" aria-label="词库设置">⚙</button>
             </div>
             <div id="termList" class="term-list"></div>
           </div>
@@ -332,6 +334,16 @@
             <button id="resetBtn" class="danger">恢复默认词库</button>
           </div>
           <button id="closeLexiconSettingsBtn">关闭</button>
+        </div>
+      </div>
+      <div id="confirmDeleteTermModal" class="modal-overlay" hidden>
+        <div class="modal-card">
+          <h2>确认删除词条</h2>
+          <p id="confirmDeleteTermText">删除后无法恢复，确定继续吗？</p>
+          <div class="compact-actions">
+            <button id="cancelDeleteTermBtn">取消</button>
+            <button id="confirmDeleteTermBtn" class="danger">确认删除</button>
+          </div>
         </div>
       </div>
       <div id="translateUnlockModal" class="modal-overlay" hidden>
@@ -734,6 +746,8 @@
         save();
         renderTerms();
         renderTermEditor();
+        hideDeleteTermConfirm();
+        status("已删除词条");
       }
       function renderTemplates() {
         normalizeConfig();
@@ -899,6 +913,15 @@
       function hideSettingHelp() {
         document.getElementById("settingHelp").hidden = true;
       }
+      function showDeleteTermConfirm() {
+        var entry = activeTerm();
+        if (!entry) return;
+        document.getElementById("confirmDeleteTermText").textContent = '确定删除词条 “' + entry.word + '” 吗？删除后无法恢复。';
+        document.getElementById("confirmDeleteTermModal").hidden = false;
+      }
+      function hideDeleteTermConfirm() {
+        document.getElementById("confirmDeleteTermModal").hidden = true;
+      }
       function showLexiconSettingsModal() {
         document.getElementById("lexiconSettingsModal").hidden = false;
       }
@@ -1013,7 +1036,7 @@
       document.getElementById("refreshBtn").onclick = function() { post({ type: "SCAN_SELECTION" }); };
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
-      document.getElementById("deleteTermBtn").onclick = deleteTerm;
+      document.getElementById("deleteTermBtn").onclick = showDeleteTermConfirm;
       document.getElementById("lexiconSettingsBtn").onclick = showLexiconSettingsModal;
       document.getElementById("templateSettingsBtn").onclick = function() { showTemplateSettings(true); };
       document.getElementById("backToTemplatesBtn").onclick = function() { showTemplateSettings(false); };
@@ -1029,6 +1052,9 @@
       });
       document.getElementById("closeSettingHelpBtn").onclick = hideSettingHelp;
       document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
+      document.getElementById("cancelDeleteTermBtn").onclick = hideDeleteTermConfirm;
+      document.getElementById("confirmDeleteTermBtn").onclick = deleteTerm;
+      document.getElementById("confirmDeleteTermModal").onclick = function(event) { if (event.target.id === "confirmDeleteTermModal") hideDeleteTermConfirm(); };
       document.getElementById("closeLexiconSettingsBtn").onclick = hideLexiconSettingsModal;
       document.getElementById("lexiconSettingsModal").onclick = function(event) { if (event.target.id === "lexiconSettingsModal") hideLexiconSettingsModal(); };
       document.getElementById("cancelTranslateUnlockBtn").onclick = function() { hideTranslateUnlockModal(); status("已取消解锁测试翻译配置"); };
