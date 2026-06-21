@@ -318,6 +318,17 @@
           <button id="closeSettingHelpBtn">关闭</button>
         </div>
       </div>
+      <div id="translateUnlockModal" class="modal-overlay" hidden>
+        <div class="modal-card">
+          <h2>解锁测试翻译 API</h2>
+          <p>请输入口令后，把仓库中的加密百度翻译测试配置写入当前设备。</p>
+          <label>解锁口令<input id="translateUnlockPassphrase" type="password" placeholder="请输入口令"></label>
+          <div class="compact-actions">
+            <button id="cancelTranslateUnlockBtn">取消</button>
+            <button id="confirmTranslateUnlockBtn" class="primary">解锁并写入</button>
+          </div>
+        </div>
+      </div>
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
@@ -810,8 +821,7 @@
       }
       async function loadTestTranslatePreset() {
         try {
-          var passphrase = window.prompt("请输入测试翻译配置口令");
-          if (passphrase == null) { status("已取消解锁测试翻译配置"); return; }
+          var passphrase = value("translateUnlockPassphrase");
           passphrase = passphrase.trim();
           if (!passphrase) { status("请输入口令后再试"); return; }
           var preset = await decryptTranslatePreset(passphrase);
@@ -820,6 +830,7 @@
           setValue("baiduFrom", preset.from || "zh");
           setValue("baiduTo", preset.to || "en");
           syncTranslate(true);
+          document.getElementById("translateUnlockModal").hidden = true;
           status("已解锁并写入测试翻译 API 到当前设备");
         } catch (error) {
           status("测试翻译配置解锁失败：" + (error && error.message ? error.message : "口令不正确或配置已损坏"));
@@ -861,6 +872,16 @@
       }
       function hideSettingHelp() {
         document.getElementById("settingHelp").hidden = true;
+      }
+      function showTranslateUnlockModal() {
+        setValue("translateUnlockPassphrase", "");
+        document.getElementById("translateUnlockModal").hidden = false;
+        setTimeout(function() {
+          document.getElementById("translateUnlockPassphrase").focus();
+        }, 0);
+      }
+      function hideTranslateUnlockModal() {
+        document.getElementById("translateUnlockModal").hidden = true;
       }
       function applyAiPreset(provider) {
         var previousProvider = config.aiSettings.provider || "openai-compatible";
@@ -975,6 +996,10 @@
       });
       document.getElementById("closeSettingHelpBtn").onclick = hideSettingHelp;
       document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
+      document.getElementById("cancelTranslateUnlockBtn").onclick = function() { hideTranslateUnlockModal(); status("已取消解锁测试翻译配置"); };
+      document.getElementById("confirmTranslateUnlockBtn").onclick = function() { loadTestTranslatePreset(); };
+      document.getElementById("translateUnlockModal").onclick = function(event) { if (event.target.id === "translateUnlockModal") hideTranslateUnlockModal(); };
+      document.getElementById("translateUnlockPassphrase").onkeydown = function(event) { if (event.key === "Enter") loadTestTranslatePreset(); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
       document.getElementById("addTextControlPropsBtn").onclick = addTextControlProperties;
       document.getElementById("translateBtn").onclick = function() { translateAndRename(false); };
@@ -987,7 +1012,7 @@
       document.getElementById("resetBtn").onclick = function() { config.lexicon = defaultConfig().lexicon; activeTermId = config.lexicon[0].id; save(); renderTerms(); renderTermEditor(); status("已恢复默认词库"); };
       document.getElementById("saveAiBtn").onclick = syncAi;
       document.getElementById("saveTranslateBtn").onclick = syncTranslate;
-      document.getElementById("loadTestTranslateBtn").onclick = function() { loadTestTranslatePreset(); };
+      document.getElementById("loadTestTranslateBtn").onclick = function() { showTranslateUnlockModal(); };
       document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
       ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo","autoFillTranslateText"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
