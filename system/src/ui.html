@@ -236,7 +236,11 @@
             <div class="setting-field"><label>From<input id="baiduFrom" placeholder="zh"></label><button class="setting-help" data-setting-help="源语言 From" data-setting-description="输入文字的语言代码。中文通常填写 zh，自动识别可填写 auto。" title="输入文字的语言代码">？</button></div>
             <div class="setting-field"><label>To<input id="baiduTo" placeholder="en"></label><button class="setting-help" data-setting-help="目标语言 To" data-setting-description="翻译结果的语言代码。节点英文命名通常填写 en。" title="翻译结果的语言代码">？</button></div>
           </div>
-          <button id="saveTranslateBtn" title="将百度翻译设置保存到当前 Figma 插件的本机存储">保存百度翻译</button>
+          <div class="two grid">
+            <button id="saveTranslateBtn" title="将百度翻译设置保存到当前 Figma 插件的本机存储">保存百度翻译</button>
+            <button id="loadTestTranslateBtn" title="输入口令后，解锁仓库里加密保存的测试翻译配置并自动填入当前设备">启动测试翻译 API</button>
+          </div>
+          <small>测试按钮会从仓库里的加密配置解锁百度翻译测试账号，输入口令后只会写入当前设备，不会在界面里保存口令。</small>
         </div>
         <h2>词库与属性方案</h2>
         <div class="actions">
@@ -340,6 +344,16 @@
       var selection = { count: 0, roots: [] };
       var activeTermId = "";
       var localTestConfig = __LOCAL_TEST_CONFIG__;
+      var encryptedTranslatePreset = {
+        algorithm: "AES-GCM",
+        kdf: "PBKDF2",
+        hash: "SHA-256",
+        iterations: 150000,
+        salt: "gpHG/Qw6FuO//AJUMk7+Bw==",
+        iv: "1ArKdyg/52w9d+R8",
+        ciphertext: "WJTukKF5aBgUuOna4KmbV6Fn6G9GBxdwWxhq7F+n5poWewIjK8ERHZ2mq2TYnYelncSelZG9mz/rhiAC3q2TwgpKQkg5qm6cGK/Tgsq1dIwj/7ERr4C7HgNTclRMQp9XMI5l8FLEFHTf",
+        tag: "edfFY+ZrgnV9Kz9AFoHiAQ=="
+      };
 
       function defaultConfig() {
         return {
@@ -770,6 +784,47 @@
       }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.provider = value("aiProvider"); config.aiSettings.providerKeys = config.aiSettings.providerKeys || {}; config.aiSettings.apiKey = value("aiKey"); config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey; config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
       function syncTranslate(silent) { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; config.translateSettings.autoFillFromSelection = checked("autoFillTranslateText"); save(); if (!silent) status("百度翻译配置已保存"); }
+      function base64ToBytes(text) {
+        var binary = atob(text);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+      }
+      async function decryptTranslatePreset(passphrase) {
+        var encoder = new TextEncoder();
+        var passphraseKey = await crypto.subtle.importKey("raw", encoder.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+        var key = await crypto.subtle.deriveKey(
+          { name: "PBKDF2", salt: base64ToBytes(encryptedTranslatePreset.salt), iterations: encryptedTranslatePreset.iterations, hash: "SHA-256" },
+          passphraseKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
+        var ciphertext = base64ToBytes(encryptedTranslatePreset.ciphertext);
+        var tag = base64ToBytes(encryptedTranslatePreset.tag);
+        var combined = new Uint8Array(ciphertext.length + tag.length);
+        combined.set(ciphertext, 0);
+        combined.set(tag, ciphertext.length);
+        var decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(encryptedTranslatePreset.iv) }, key, combined);
+        return JSON.parse(new TextDecoder().decode(decrypted));
+      }
+      async function loadTestTranslatePreset() {
+        try {
+          var passphrase = window.prompt("请输入测试翻译配置口令");
+          if (passphrase == null) { status("已取消解锁测试翻译配置"); return; }
+          passphrase = passphrase.trim();
+          if (!passphrase) { status("请输入口令后再试"); return; }
+          var preset = await decryptTranslatePreset(passphrase);
+          setValue("baiduAppId", preset.appId || "");
+          setValue("baiduSecretKey", preset.secretKey || "");
+          setValue("baiduFrom", preset.from || "zh");
+          setValue("baiduTo", preset.to || "en");
+          syncTranslate(true);
+          status("已解锁并写入测试翻译 API 到当前设备");
+        } catch (error) {
+          status("测试翻译配置解锁失败：" + (error && error.message ? error.message : "口令不正确或配置已损坏"));
+        }
+      }
       function translateAndRename(addTextControlProperties) {
         var text = value("translateText").trim();
         if (!text) { status("请先输入中文"); return; }
@@ -932,6 +987,7 @@
       document.getElementById("resetBtn").onclick = function() { config.lexicon = defaultConfig().lexicon; activeTermId = config.lexicon[0].id; save(); renderTerms(); renderTermEditor(); status("已恢复默认词库"); };
       document.getElementById("saveAiBtn").onclick = syncAi;
       document.getElementById("saveTranslateBtn").onclick = syncTranslate;
+      document.getElementById("loadTestTranslateBtn").onclick = function() { loadTestTranslatePreset(); };
       document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
       ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo","autoFillTranslateText"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
