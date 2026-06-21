@@ -109,7 +109,6 @@
       <nav>
         <div class="nav-pages">
           <button class="tab active" data-tab="lexicon" title="词库命名/属性">命名</button>
-          <button class="tab" data-tab="organize" title="一键整理并命名画板">整理</button>
           <button class="tab" data-tab="templates" title="Library 和内置模板">模板</button>
           <button class="tab" data-tab="tools" title="实用功能">功能</button>
         </div>
@@ -155,18 +154,6 @@
         </div>
       </section>
 
-      <section id="organize">
-        <div id="organizeSelectionPanel" class="panel"></div>
-        <div class="panel grid">
-          <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
-          <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
-        </div>
-        <div class="panel grid">
-          <button id="addTextControlPropsBtn" class="primary" title="为选中画板内全部文本节点写入 TimiL2GameUI 可识别的程序控制和文本属性">一键挂文本属性</button>
-          <small>选中一个画板后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
-        </div>
-      </section>
-
       <section id="templates">
         <div id="templateHome" class="panel grid">
           <div class="template-toolbar"><button id="templateSettingsBtn" title="配置 Library Component Key 和插入后是否打散">模板设置</button></div>
@@ -181,6 +168,15 @@
       </section>
 
       <section id="tools">
+        <div id="toolsSelectionPanel" class="panel"></div>
+        <div class="panel grid">
+          <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
+          <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
+        </div>
+        <div class="panel grid">
+          <button id="addTextControlPropsBtn" class="primary" title="为选中画板内全部文本节点写入 TimiL2GameUI 可识别的程序控制和文本属性">一键挂文本属性</button>
+          <small>选中一个画板后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
+        </div>
         <div class="panel">
           <div class="variant-action">
             <div class="panel-title-row">
@@ -467,8 +463,10 @@
             '<span>子节点：' + n.childCount + ' 个</span>' +
           '</div>';
         }).join("") : "<p>请选择一个或多个节点后点击词条。</p>";
-        document.getElementById("selectionPanel").innerHTML = html;
-        document.getElementById("organizeSelectionPanel").innerHTML = html;
+        ["selectionPanel", "toolsSelectionPanel"].forEach(function(id) {
+          var panel = document.getElementById(id);
+          if (panel) panel.innerHTML = html;
+        });
       }
       function renderTerms() {
         normalizeConfig();
