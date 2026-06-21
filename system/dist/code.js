@@ -1086,11 +1086,11 @@
     });
     let response = null;
     let lastError = null;
-    const endpoints = [
+    const remoteEndpoints = [
       "https://api.fanyi.baidu.com/api/trans/vip/translate",
       "https://fanyi-api.baidu.com/api/trans/vip/translate"
     ];
-    for (const endpoint of endpoints) {
+    for (const endpoint of remoteEndpoints) {
       try {
         response = await fetch(endpoint, {
           method: "POST",
@@ -1104,7 +1104,14 @@
     }
     if (!response) {
       try {
-        return await requestBaiduTranslationViaUi(query, endpoints);
+        return await requestLocalBridgeTranslation(query);
+      } catch (bridgeError) {
+        lastError = bridgeError;
+      }
+    }
+    if (!response) {
+      try {
+        return await requestBaiduTranslationViaUi(query, remoteEndpoints.concat(localBridgeEndpoints()));
       } catch (uiError) {
         throw new Error(
           `\u767E\u5EA6\u7FFB\u8BD1\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A${errorMessage(lastError)}\uFF1BUI \u515C\u5E95\u4E5F\u5931\u8D25\uFF1A${errorMessage(uiError)}\u3002\u8BF7\u91CD\u65B0\u5BFC\u5165\u63D2\u4EF6 manifest\uFF0C\u5E76\u786E\u8BA4 networkAccess \u5DF2\u5141\u8BB8 https://api.fanyi.baidu.com \u548C https://fanyi-api.baidu.com\u3002`
@@ -1130,6 +1137,33 @@
         reject(new Error("UI \u7FFB\u8BD1\u8BF7\u6C42\u8D85\u65F6"));
       }, 12e3);
     });
+  }
+  async function requestLocalBridgeTranslation(query) {
+    let lastError = null;
+    for (const endpoint of localBridgeEndpoints()) {
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: query
+        });
+        if (!response.ok) throw new Error(`\u672C\u5730\u6865\u63A5\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
+        const payload = await response.json();
+        if (payload == null ? void 0 : payload.error_code) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u5931\u8D25\uFF1A${payload.error_code} ${payload.error_msg || ""}`.trim());
+        const translated = Array.isArray(payload == null ? void 0 : payload.trans_result) ? payload.trans_result.map((item) => item.dst || "") : [];
+        if (!translated.length || !translated.some((item) => item.trim())) throw new Error("\u672C\u5730\u6865\u63A5\u6CA1\u6709\u8FD4\u56DE\u6709\u6548\u7FFB\u8BD1\u7ED3\u679C");
+        return translated;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw new Error(`\u672C\u5730\u7FFB\u8BD1\u6865\u63A5\u5931\u8D25\uFF1A${errorMessage(lastError)}`);
+  }
+  function localBridgeEndpoints() {
+    return [
+      "http://127.0.0.1:37123/api/trans/vip/translate",
+      "http://localhost:37123/api/trans/vip/translate"
+    ];
   }
   function encodeQuery(values) {
     return Object.keys(values).map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(values[key])}`).join("&");

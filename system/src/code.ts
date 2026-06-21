@@ -973,11 +973,11 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
   });
   let response: Response | null = null;
   let lastError: unknown = null;
-  const endpoints = [
+  const remoteEndpoints = [
     "https://api.fanyi.baidu.com/api/trans/vip/translate",
     "https://fanyi-api.baidu.com/api/trans/vip/translate"
   ];
-  for (const endpoint of endpoints) {
+  for (const endpoint of remoteEndpoints) {
     try {
       response = await fetch(endpoint, {
         method: "POST",
@@ -991,7 +991,14 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
   }
   if (!response) {
     try {
-      return await requestBaiduTranslationViaUi(query, endpoints);
+      return await requestLocalBridgeTranslation(query);
+    } catch (bridgeError) {
+      lastError = bridgeError;
+    }
+  }
+  if (!response) {
+    try {
+      return await requestBaiduTranslationViaUi(query, remoteEndpoints.concat(localBridgeEndpoints()));
     } catch (uiError) {
       throw new Error(
         `百度翻译网络请求失败：${errorMessage(lastError)}；UI 兜底也失败：${errorMessage(uiError)}。请重新导入插件 manifest，并确认 networkAccess 已允许 https://api.fanyi.baidu.com 和 https://fanyi-api.baidu.com。`
@@ -1020,6 +1027,37 @@ async function requestBaiduTranslationViaUi(query: string, endpoints: string[]):
       reject(new Error("UI 翻译请求超时"));
     }, 12000);
   });
+}
+
+async function requestLocalBridgeTranslation(query: string): Promise<string[]> {
+  let lastError: unknown = null;
+  for (const endpoint of localBridgeEndpoints()) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: query
+      });
+      if (!response.ok) throw new Error(`本地桥接请求失败：${response.status} ${response.statusText}`);
+      const payload = await response.json();
+      if (payload?.error_code) throw new Error(`百度翻译失败：${payload.error_code} ${payload.error_msg || ""}`.trim());
+      const translated: string[] = Array.isArray(payload?.trans_result)
+        ? payload.trans_result.map((item: { dst?: string }) => item.dst || "")
+        : [];
+      if (!translated.length || !translated.some((item) => item.trim())) throw new Error("本地桥接没有返回有效翻译结果");
+      return translated;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(`本地翻译桥接失败：${errorMessage(lastError)}`);
+}
+
+function localBridgeEndpoints(): string[] {
+  return [
+    "http://127.0.0.1:37123/api/trans/vip/translate",
+    "http://localhost:37123/api/trans/vip/translate"
+  ];
 }
 
 function encodeQuery(values: Record<string, string>): string {
