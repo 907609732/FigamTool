@@ -274,6 +274,7 @@
   var CONFIG_KEY = "ai-auto-namer-config";
   var PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
   var CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
+  var pendingUiTranslationRequests = /* @__PURE__ */ new Map();
   figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
   void initialize();
   figma.on("selectionchange", async () => {
@@ -285,6 +286,17 @@
   });
   figma.ui.onmessage = async (message) => {
     try {
+      if (message.type === "BAIDU_TRANSLATION_RESULT") {
+        const pending = pendingUiTranslationRequests.get(message.requestId);
+        if (!pending) return;
+        pendingUiTranslationRequests.delete(message.requestId);
+        if (message.error) {
+          pending.reject(new Error(message.error));
+        } else {
+          pending.resolve(Array.isArray(message.translated) ? message.translated : []);
+        }
+        return;
+      }
       if (message.type === "SCAN_SELECTION") {
         post({ type: "SELECTION", selection: await getSelectionSummary() });
         return;
@@ -1091,9 +1103,13 @@
       }
     }
     if (!response) {
-      throw new Error(
-        `\u767E\u5EA6\u7FFB\u8BD1\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A${errorMessage(lastError)}\u3002\u8BF7\u91CD\u65B0\u5BFC\u5165\u63D2\u4EF6 manifest\uFF0C\u5E76\u786E\u8BA4 networkAccess \u5DF2\u5141\u8BB8 https://api.fanyi.baidu.com \u548C https://fanyi-api.baidu.com\u3002`
-      );
+      try {
+        return await requestBaiduTranslationViaUi(query, endpoints);
+      } catch (uiError) {
+        throw new Error(
+          `\u767E\u5EA6\u7FFB\u8BD1\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A${errorMessage(lastError)}\uFF1BUI \u515C\u5E95\u4E5F\u5931\u8D25\uFF1A${errorMessage(uiError)}\u3002\u8BF7\u91CD\u65B0\u5BFC\u5165\u63D2\u4EF6 manifest\uFF0C\u5E76\u786E\u8BA4 networkAccess \u5DF2\u5141\u8BB8 https://api.fanyi.baidu.com \u548C https://fanyi-api.baidu.com\u3002`
+        );
+      }
     }
     if (!response.ok) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
     const payload = await response.json();
@@ -1101,6 +1117,19 @@
     const translated = Array.isArray(payload == null ? void 0 : payload.trans_result) ? payload.trans_result.map((item) => item.dst || "") : [];
     if (!translated.length || !translated.some((item) => item.trim())) throw new Error("\u767E\u5EA6\u7FFB\u8BD1\u6CA1\u6709\u8FD4\u56DE\u6709\u6548\u7ED3\u679C");
     return translated;
+  }
+  async function requestBaiduTranslationViaUi(query, endpoints) {
+    const requestId = `baidu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return await new Promise((resolve, reject) => {
+      pendingUiTranslationRequests.set(requestId, { resolve, reject });
+      post({ type: "REQUEST_BAIDU_TRANSLATION", requestId, query, endpoints });
+      setTimeout(() => {
+        const pending = pendingUiTranslationRequests.get(requestId);
+        if (!pending) return;
+        pendingUiTranslationRequests.delete(requestId);
+        reject(new Error("UI \u7FFB\u8BD1\u8BF7\u6C42\u8D85\u65F6"));
+      }, 12e3);
+    });
   }
   function encodeQuery(values) {
     return Object.keys(values).map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(values[key])}`).join("&");

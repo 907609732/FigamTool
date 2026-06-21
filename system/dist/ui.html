@@ -268,7 +268,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.35</span>
+            <span id="versionText">V0.1.36</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -1069,6 +1069,29 @@
         row.push(cell); rows.push(row);
         return rows.filter(function(r) { return r.some(function(c) { return c.trim(); }); });
       }
+      async function requestBaiduTranslationFromUi(message) {
+        var lastError = "";
+        for (var i = 0; i < message.endpoints.length; i += 1) {
+          try {
+            var response = await fetch(message.endpoints[i], {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: message.query
+            });
+            if (!response.ok) throw new Error("HTTP " + response.status + " " + response.statusText);
+            var payload = await response.json();
+            if (payload && payload.error_code) throw new Error(String(payload.error_code) + " " + (payload.error_msg || ""));
+            var translated = Array.isArray(payload && payload.trans_result)
+              ? payload.trans_result.map(function(item) { return item && item.dst ? item.dst : ""; })
+              : [];
+            post({ type: "BAIDU_TRANSLATION_RESULT", requestId: message.requestId, translated: translated });
+            return;
+          } catch (error) {
+            lastError = error && error.message ? error.message : String(error);
+          }
+        }
+        post({ type: "BAIDU_TRANSLATION_RESULT", requestId: message.requestId, error: lastError || "UI 翻译请求失败" });
+      }
       function download(filename, content, type) {
         var blob = new Blob(["\ufeff" + content], { type: type + ";charset=utf-8" });
         var link = document.createElement("a");
@@ -1152,6 +1175,7 @@
       window.onmessage = function(event) {
         var message = event.data.pluginMessage;
         if (!message) return;
+        if (message.type === "REQUEST_BAIDU_TRANSLATION") { requestBaiduTranslationFromUi(message); return; }
         if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderAll(); }
         if (message.type === "SELECTION") { selection = message.selection; renderSelection(); renderTerms(); renderTermEditor(); }
         if (message.type === "APPLY_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);

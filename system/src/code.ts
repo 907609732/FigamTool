@@ -19,6 +19,10 @@ import {
 const CONFIG_KEY = "ai-auto-namer-config";
 const PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
 const CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
+const pendingUiTranslationRequests = new Map<
+  string,
+  { resolve: (translated: string[]) => void; reject: (error: Error) => void }
+>();
 
 figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
 
@@ -34,6 +38,18 @@ figma.on("selectionchange", async () => {
 
 figma.ui.onmessage = async (message: UiToPluginMessage) => {
   try {
+    if (message.type === "BAIDU_TRANSLATION_RESULT") {
+      const pending = pendingUiTranslationRequests.get(message.requestId);
+      if (!pending) return;
+      pendingUiTranslationRequests.delete(message.requestId);
+      if (message.error) {
+        pending.reject(new Error(message.error));
+      } else {
+        pending.resolve(Array.isArray(message.translated) ? message.translated : []);
+      }
+      return;
+    }
+
     if (message.type === "SCAN_SELECTION") {
       post({ type: "SELECTION", selection: await getSelectionSummary() });
       return;
@@ -974,9 +990,13 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
     }
   }
   if (!response) {
-    throw new Error(
-      `百度翻译网络请求失败：${errorMessage(lastError)}。请重新导入插件 manifest，并确认 networkAccess 已允许 https://api.fanyi.baidu.com 和 https://fanyi-api.baidu.com。`
-    );
+    try {
+      return await requestBaiduTranslationViaUi(query, endpoints);
+    } catch (uiError) {
+      throw new Error(
+        `百度翻译网络请求失败：${errorMessage(lastError)}；UI 兜底也失败：${errorMessage(uiError)}。请重新导入插件 manifest，并确认 networkAccess 已允许 https://api.fanyi.baidu.com 和 https://fanyi-api.baidu.com。`
+      );
+    }
   }
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);
   const payload = await response.json();
@@ -986,6 +1006,20 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
     : [];
   if (!translated.length || !translated.some((item) => item.trim())) throw new Error("百度翻译没有返回有效结果");
   return translated;
+}
+
+async function requestBaiduTranslationViaUi(query: string, endpoints: string[]): Promise<string[]> {
+  const requestId = `baidu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return await new Promise<string[]>((resolve, reject) => {
+    pendingUiTranslationRequests.set(requestId, { resolve, reject });
+    post({ type: "REQUEST_BAIDU_TRANSLATION", requestId, query, endpoints });
+    setTimeout(() => {
+      const pending = pendingUiTranslationRequests.get(requestId);
+      if (!pending) return;
+      pendingUiTranslationRequests.delete(requestId);
+      reject(new Error("UI 翻译请求超时"));
+    }, 12000);
+  });
 }
 
 function encodeQuery(values: Record<string, string>): string {
