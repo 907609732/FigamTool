@@ -372,14 +372,8 @@
       var activeTermId = "";
       var localTestConfig = __LOCAL_TEST_CONFIG__;
       var encryptedTranslatePreset = {
-        algorithm: "AES-GCM",
-        kdf: "PBKDF2",
-        hash: "SHA-256",
-        iterations: 150000,
-        salt: "qq1AjpkaKV6b5d62A2A7Xw==",
-        iv: "hJ85aEZG9hdeKuyP",
-        ciphertext: "I9tOuMdBHj3MCBaJExLwFcaZLI+6pXAo0pIQszy03VES8F8/eVC2GB5utiozTUMTr/mHQj4IW3lzuMiSmGMiZNkyVDoLpGdWtVxbPBouH4ewCB6R7CNOr/wkcVeh8uLV5K9Ei+opXfGh",
-        tag: "DKjtT4hGZDcH2sovmF9mSw=="
+        algorithm: "XOR-FNV1A",
+        ciphertext: "eQ3jch6CMg/t+uVk6XeuiPBs7xyc/vQSjhjmapSY81vaPjSlI8HN9eijyPKuu8yz7/2RxnuaKZnYwuzA+dL6SEtO+MUwaQ7IkQebEUU8mfMiEz9lsGE6ZXewwQ4leVm8IldJT1iuZICfFmMM/Q=="
       };
 
       function defaultConfig() {
@@ -817,23 +811,39 @@
         for (var i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
         return bytes;
       }
-      async function decryptTranslatePreset(passphrase) {
-        var encoder = new TextEncoder();
-        var passphraseKey = await crypto.subtle.importKey("raw", encoder.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-        var key = await crypto.subtle.deriveKey(
-          { name: "PBKDF2", salt: base64ToBytes(encryptedTranslatePreset.salt), iterations: encryptedTranslatePreset.iterations, hash: "SHA-256" },
-          passphraseKey,
-          { name: "AES-GCM", length: 256 },
-          false,
-          ["decrypt"]
-        );
+      function fnv1aHash(text) {
+        var bytes = new TextEncoder().encode(text);
+        var hash = 2166136261;
+        for (var i = 0; i < bytes.length; i += 1) {
+          hash ^= bytes[i];
+          hash = Math.imul(hash, 16777619) >>> 0;
+        }
+        return hash >>> 0;
+      }
+      function decryptTranslatePreset(passphrase) {
+        var seed = fnv1aHash(passphrase);
+        if (!seed) seed = 2654435769;
+        var state = seed >>> 0;
+        var byteIndex = 4;
+        var block = 0;
+        function nextByte() {
+          if (byteIndex >= 4) {
+            state ^= (state << 13) >>> 0;
+            state ^= state >>> 17;
+            state ^= (state << 5) >>> 0;
+            block = state >>> 0;
+            byteIndex = 0;
+          }
+          var value = (block >>> (byteIndex * 8)) & 255;
+          byteIndex += 1;
+          return value;
+        }
         var ciphertext = base64ToBytes(encryptedTranslatePreset.ciphertext);
-        var tag = base64ToBytes(encryptedTranslatePreset.tag);
-        var combined = new Uint8Array(ciphertext.length + tag.length);
-        combined.set(ciphertext, 0);
-        combined.set(tag, ciphertext.length);
-        var decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(encryptedTranslatePreset.iv) }, key, combined);
-        return JSON.parse(new TextDecoder().decode(decrypted));
+        var plain = new Uint8Array(ciphertext.length);
+        for (var i = 0; i < ciphertext.length; i += 1) plain[i] = ciphertext[i] ^ nextByte();
+        var text = new TextDecoder().decode(plain);
+        if (text.slice(0, 4) !== "FT1:") throw new Error("口令不正确");
+        return JSON.parse(text.slice(4));
       }
       async function loadTestTranslatePreset() {
         try {
