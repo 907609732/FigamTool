@@ -174,7 +174,7 @@
           <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
         </div>
         <div class="panel grid">
-          <button id="addTextControlPropsBtn" class="primary" title="为选中画板内全部文本节点写入 TimiL2GameUI 可识别的程序控制和文本属性">一键挂文本属性</button>
+          <button id="addTextControlPropsBtn" class="primary" title="为选中画板内全部文本节点写入 TimiL2GameUI 可识别的文本属性和程序控制属性">一键挂文本加程序控制属性</button>
           <small>选中一个画板后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
         </div>
         <div class="panel">
@@ -197,7 +197,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.30</span>
+            <span id="versionText">V0.1.31</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -732,7 +732,7 @@
         post({ type: "AUTO_NAME_FRAME", config: config });
       }
       function addTextControlProperties() {
-        status("正在给画板内文本挂程序控制和文本属性...");
+        status("正在给画板内文本挂文本属性和程序控制属性...");
         post({ type: "ADD_TEXT_CONTROL_PROPERTIES" });
       }
       function createVariants(mode) {
