@@ -48,7 +48,8 @@
       .preset-switcher { display: flex; flex-wrap: wrap; gap: 6px; }
       .preset-switcher button { width: auto; min-width: 54px; min-height: 28px; padding: 0 8px; }
       .preset-switcher button.active { border-color: #0a66ff; color: #0a66ff; }
-      .inline-action { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; align-items: end; }
+      .inline-action { display: grid; gap: 8px; }
+      .translate-actions { display: grid; grid-template-columns: minmax(0, 1fr) 96px 120px; gap: 8px; align-items: end; }
       .variant-action { display: grid; gap: 8px; }
       .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
       .panel-title-row h2 { margin: 0; font-size: 13px; text-transform: none; }
@@ -158,8 +159,12 @@
           <div class="grid">
             <div class="panel">
               <div class="inline-action">
-                <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
-                <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
+                <div class="translate-actions">
+                  <label>中文翻译命名<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
+                  <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
+                  <button id="translateAndTagBtn" title="翻译命名后，继续给当前选中内容里的文本挂文本属性和程序控制属性">翻译并挂属性</button>
+                </div>
+                <label class="check"><input id="autoFillTranslateText" type="checkbox">选中节点时自动带入输入框</label>
               </div>
             </div>
             <fieldset>
@@ -190,8 +195,8 @@
           <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
         </div>
         <div class="panel grid">
-          <button id="addTextControlPropsBtn" class="primary" title="为选中画板内全部文本节点写入 TimiL2GameUI 可识别的文本属性和程序控制属性">一键挂文本加程序控制属性</button>
-          <small>选中一个画板后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
+          <button id="addTextControlPropsBtn" class="primary" title="为当前选中内容里的全部文本节点写入 TimiL2GameUI 可识别的文本属性和程序控制属性">一键挂文本加程序控制属性</button>
+          <small>可直接选中文本节点，或选中包含文本的画板/容器后执行。插件会递归处理内部 TEXT 节点，写入 CMVarPropertyData 和 CMTextPropertyData，遇到富文本/滚动数字冲突时跳过文本属性。</small>
         </div>
         <div class="panel">
           <div class="variant-action">
@@ -213,7 +218,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.32</span>
+            <span id="versionText">V0.1.33</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -374,7 +379,7 @@
           applyPropertiesOnRename: true,
           templates: defaultTemplates(),
           aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma UI nodes. Return JSON array with id and name." },
-          translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en" }
+          translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en", autoFillFromSelection: true }
         };
       }
       function defaultTemplates() {
@@ -439,6 +444,7 @@
         config.aiSettings.providerKeys = Object.assign({}, fallback.aiSettings.providerKeys, config.aiSettings.providerKeys || {}, localTestConfig && localTestConfig.aiSettings && localTestConfig.aiSettings.providerKeys || {});
         if (config.aiSettings.apiKey) config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey;
         config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings || {});
+        if (config.translateSettings.autoFillFromSelection == null) config.translateSettings.autoFillFromSelection = true;
         if (!config.translateSettings.secretKey && localTestConfig && localTestConfig.translateSettings) Object.assign(config.translateSettings, localTestConfig.translateSettings);
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
       }
@@ -483,6 +489,9 @@
           var panel = document.getElementById(id);
           if (panel) panel.innerHTML = html;
         });
+        if (config && config.translateSettings && config.translateSettings.autoFillFromSelection && selection.roots.length === 1) {
+          setValue("translateText", selection.roots[0].sourceText || selection.roots[0].name || "");
+        }
       }
       function renderTerms() {
         normalizeConfig();
@@ -753,15 +762,16 @@
         setValue("baiduSecretKey", config.translateSettings.secretKey);
         setValue("baiduFrom", config.translateSettings.from);
         setValue("baiduTo", config.translateSettings.to);
+        setChecked("autoFillTranslateText", config.translateSettings.autoFillFromSelection);
         renderTemplateSettings();
       }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.provider = value("aiProvider"); config.aiSettings.providerKeys = config.aiSettings.providerKeys || {}; config.aiSettings.apiKey = value("aiKey"); config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey; config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
-      function syncTranslate() { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; save(); status("百度翻译配置已保存"); }
-      function translateAndRename() {
+      function syncTranslate(silent) { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; config.translateSettings.autoFillFromSelection = checked("autoFillTranslateText"); save(); if (!silent) status("百度翻译配置已保存"); }
+      function translateAndRename(addTextControlProperties) {
         var text = value("translateText").trim();
         if (!text) { status("请先输入中文"); return; }
-        syncTranslate();
-        post({ type: "TRANSLATE_AND_RENAME", text: text, options: renameOptions(), config: config });
+        syncTranslate(true);
+        post({ type: "TRANSLATE_AND_RENAME", text: text, options: renameOptions(), config: config, addTextControlProperties: !!addTextControlProperties });
       }
       function autoNameFrame() {
         syncTranslate();
@@ -909,7 +919,8 @@
       document.getElementById("settingHelp").onclick = function(event) { if (event.target.id === "settingHelp") hideSettingHelp(); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
       document.getElementById("addTextControlPropsBtn").onclick = addTextControlProperties;
-      document.getElementById("translateBtn").onclick = translateAndRename;
+      document.getElementById("translateBtn").onclick = function() { translateAndRename(false); };
+      document.getElementById("translateAndTagBtn").onclick = function() { translateAndRename(true); };
       document.getElementById("exportCsvBtn").onclick = exportCsv;
       document.getElementById("importCsvBtn").onclick = importCsv;
       document.getElementById("exportJsonBtn").onclick = exportJson;
@@ -920,7 +931,7 @@
       document.getElementById("saveTranslateBtn").onclick = syncTranslate;
       document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
-      ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
+      ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo","autoFillTranslateText"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
       var resizeFrame = 0;
       var pendingResize = null;
       function sendPendingResize() {

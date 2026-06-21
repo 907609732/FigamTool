@@ -98,8 +98,15 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
 
     if (message.type === "TRANSLATE_AND_RENAME") {
       const result = await translateAndRename(message.text, message.options, message.config);
-      post({ type: "APPLY_RESULT", message: `百度翻译为 ${result.name}，已重命名 ${result.renamed} 个节点` });
-      figma.notify(`已翻译命名：${result.name}`);
+      if (message.addTextControlProperties) {
+        const props = await addTextControlPropertiesToCurrentSelection();
+        const messageText = `百度翻译为 ${result.name}，已重命名 ${result.renamed} 个节点；文本属性 ${props.textAdded}，程序控制 ${props.varAdded}，已存在 ${props.existing}，冲突跳过 ${props.conflicts}`;
+        post({ type: "APPLY_RESULT", message: messageText });
+        figma.notify(`已翻译命名并挂属性：${result.name}`);
+      } else {
+        post({ type: "APPLY_RESULT", message: `百度翻译为 ${result.name}，已重命名 ${result.renamed} 个节点` });
+        figma.notify(`已翻译命名：${result.name}`);
+      }
       return;
     }
 
@@ -114,7 +121,7 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
     }
 
     if (message.type === "ADD_TEXT_CONTROL_PROPERTIES") {
-      const result = await addTextControlPropertiesToSelectedFrame();
+      const result = await addTextControlPropertiesToCurrentSelection();
       const messageText = `文本属性完成：共 ${result.total} 个文本，新增 Text ${result.textAdded}，新增 Var ${result.varAdded}，已存在 ${result.existing}，冲突跳过 ${result.conflicts}`;
       post({ type: "APPLY_RESULT", message: messageText });
       figma.notify(messageText);
@@ -265,9 +272,15 @@ async function getSelectionSummary(): Promise<SelectionSummary> {
     name: node.name,
     type: node.type,
     kind: getNodeKind(node),
-    childCount: "children" in node ? node.children.length : 0
+    childCount: "children" in node ? node.children.length : 0,
+    sourceText: getSelectionSourceText(node)
   }));
   return { count: roots.length, roots };
+}
+
+function getSelectionSourceText(node: SceneNode): string {
+  if (node.type === "TEXT" && node.characters.trim()) return node.characters.trim().replace(/\s+/g, " ").slice(0, 80);
+  return node.name.trim();
 }
 
 async function collectTargets(options: RenameOptions): Promise<SceneNode[]> {
@@ -694,7 +707,7 @@ function createCMTextPropertyData(node: TextNode) {
   };
 }
 
-async function addTextControlPropertiesToSelectedFrame(): Promise<{
+async function addTextControlPropertiesToCurrentSelection(): Promise<{
   total: number;
   textAdded: number;
   varAdded: number;
@@ -703,12 +716,13 @@ async function addTextControlPropertiesToSelectedFrame(): Promise<{
 }> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
-  if (selection.length !== 1 || selection[0].type !== "FRAME") {
-    throw new Error("请选择一个画板");
+  if (!selection.length) {
+    throw new Error("请选择一个文本节点，或选择包含文本的画板/容器");
   }
-
-  const frame = selection[0];
-  const textNodes = frame.findAll((node) => node.type === "TEXT") as TextNode[];
+  const textNodes = collectSelectedTextNodes(selection);
+  if (!textNodes.length) {
+    throw new Error("当前选中内容里没有可挂属性的文本节点");
+  }
   let textAdded = 0;
   let varAdded = 0;
   let existing = 0;
@@ -743,8 +757,24 @@ async function addTextControlPropertiesToSelectedFrame(): Promise<{
     if (changed) writeCMContainer(textNode, container);
   }
 
-  figma.currentPage.selection = [frame];
+  figma.currentPage.selection = selection;
   return { total: textNodes.length, textAdded, varAdded, existing, conflicts };
+}
+
+function collectSelectedTextNodes(selection: SceneNode[]): TextNode[] {
+  const map = new Map<string, TextNode>();
+  for (const node of selection) {
+    if (node.type === "TEXT") {
+      map.set(node.id, node);
+      continue;
+    }
+    if ("findAll" in node) {
+      for (const child of node.findAll((candidate) => candidate.type === "TEXT") as TextNode[]) {
+        map.set(child.id, child);
+      }
+    }
+  }
+  return Array.from(map.values());
 }
 
 function buildAutoFrameName(projectName: string, translatedFrameName: string, width: number, height: number): string {

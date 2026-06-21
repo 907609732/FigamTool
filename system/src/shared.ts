@@ -82,6 +82,7 @@ export interface TranslateSettings {
   secretKey: string;
   from: string;
   to: string;
+  autoFillFromSelection: boolean;
 }
 
 export interface LexiconEntry {
@@ -121,7 +122,7 @@ declare const __LOCAL_TEST_CONFIG__: Partial<PluginConfig> | null;
 
 export interface SelectionSummary {
   count: number;
-  roots: Array<{ id: string; name: string; type: string; kind: NodeKind; childCount: number }>;
+  roots: Array<{ id: string; name: string; type: string; kind: NodeKind; childCount: number; sourceText: string }>;
 }
 
 export type PluginToUiMessage =
@@ -144,7 +145,7 @@ export type UiToPluginMessage =
   | { type: "EXPORT_CONFIG" }
   | { type: "WRITE_PROJECT_CONFIG"; config: PluginConfig }
   | { type: "GENERATE_AI_NAMES"; options: RenameOptions; config: PluginConfig }
-  | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig }
+  | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig; addTextControlProperties?: boolean }
   | { type: "AUTO_NAME_FRAME"; config: PluginConfig }
   | { type: "ADD_TEXT_CONTROL_PROPERTIES" }
   | { type: "CREATE_VARIANTS"; mode: VariantMode }
@@ -393,7 +394,8 @@ export const defaultConfig: PluginConfig = {
     appId: "",
     secretKey: "",
     from: "zh",
-    to: "en"
+    to: "en",
+    autoFillFromSelection: true
   }
 };
 

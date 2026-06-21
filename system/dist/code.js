@@ -262,7 +262,8 @@
       appId: "",
       secretKey: "",
       from: "zh",
-      to: "en"
+      to: "en",
+      autoFillFromSelection: true
     }
   };
   var localTestConfig = {};
@@ -338,8 +339,15 @@
       }
       if (message.type === "TRANSLATE_AND_RENAME") {
         const result = await translateAndRename(message.text, message.options, message.config);
-        post({ type: "APPLY_RESULT", message: `\u767E\u5EA6\u7FFB\u8BD1\u4E3A ${result.name}\uFF0C\u5DF2\u91CD\u547D\u540D ${result.renamed} \u4E2A\u8282\u70B9` });
-        figma.notify(`\u5DF2\u7FFB\u8BD1\u547D\u540D\uFF1A${result.name}`);
+        if (message.addTextControlProperties) {
+          const props = await addTextControlPropertiesToCurrentSelection();
+          const messageText = `\u767E\u5EA6\u7FFB\u8BD1\u4E3A ${result.name}\uFF0C\u5DF2\u91CD\u547D\u540D ${result.renamed} \u4E2A\u8282\u70B9\uFF1B\u6587\u672C\u5C5E\u6027 ${props.textAdded}\uFF0C\u7A0B\u5E8F\u63A7\u5236 ${props.varAdded}\uFF0C\u5DF2\u5B58\u5728 ${props.existing}\uFF0C\u51B2\u7A81\u8DF3\u8FC7 ${props.conflicts}`;
+          post({ type: "APPLY_RESULT", message: messageText });
+          figma.notify(`\u5DF2\u7FFB\u8BD1\u547D\u540D\u5E76\u6302\u5C5E\u6027\uFF1A${result.name}`);
+        } else {
+          post({ type: "APPLY_RESULT", message: `\u767E\u5EA6\u7FFB\u8BD1\u4E3A ${result.name}\uFF0C\u5DF2\u91CD\u547D\u540D ${result.renamed} \u4E2A\u8282\u70B9` });
+          figma.notify(`\u5DF2\u7FFB\u8BD1\u547D\u540D\uFF1A${result.name}`);
+        }
         return;
       }
       if (message.type === "AUTO_NAME_FRAME") {
@@ -352,7 +360,7 @@
         return;
       }
       if (message.type === "ADD_TEXT_CONTROL_PROPERTIES") {
-        const result = await addTextControlPropertiesToSelectedFrame();
+        const result = await addTextControlPropertiesToCurrentSelection();
         const messageText = `\u6587\u672C\u5C5E\u6027\u5B8C\u6210\uFF1A\u5171 ${result.total} \u4E2A\u6587\u672C\uFF0C\u65B0\u589E Text ${result.textAdded}\uFF0C\u65B0\u589E Var ${result.varAdded}\uFF0C\u5DF2\u5B58\u5728 ${result.existing}\uFF0C\u51B2\u7A81\u8DF3\u8FC7 ${result.conflicts}`;
         post({ type: "APPLY_RESULT", message: messageText });
         figma.notify(messageText);
@@ -488,9 +496,14 @@
       name: node.name,
       type: node.type,
       kind: getNodeKind(node),
-      childCount: "children" in node ? node.children.length : 0
+      childCount: "children" in node ? node.children.length : 0,
+      sourceText: getSelectionSourceText(node)
     }));
     return { count: roots.length, roots };
+  }
+  function getSelectionSourceText(node) {
+    if (node.type === "TEXT" && node.characters.trim()) return node.characters.trim().replace(/\s+/g, " ").slice(0, 80);
+    return node.name.trim();
   }
   async function collectTargets(options) {
     await ensureCurrentPageLoaded();
@@ -847,14 +860,16 @@
       WholeWordWrapping: false
     };
   }
-  async function addTextControlPropertiesToSelectedFrame() {
+  async function addTextControlPropertiesToCurrentSelection() {
     await ensureCurrentPageLoaded();
     const selection = Array.from(figma.currentPage.selection);
-    if (selection.length !== 1 || selection[0].type !== "FRAME") {
-      throw new Error("\u8BF7\u9009\u62E9\u4E00\u4E2A\u753B\u677F");
+    if (!selection.length) {
+      throw new Error("\u8BF7\u9009\u62E9\u4E00\u4E2A\u6587\u672C\u8282\u70B9\uFF0C\u6216\u9009\u62E9\u5305\u542B\u6587\u672C\u7684\u753B\u677F/\u5BB9\u5668");
     }
-    const frame = selection[0];
-    const textNodes = frame.findAll((node) => node.type === "TEXT");
+    const textNodes = collectSelectedTextNodes(selection);
+    if (!textNodes.length) {
+      throw new Error("\u5F53\u524D\u9009\u4E2D\u5185\u5BB9\u91CC\u6CA1\u6709\u53EF\u6302\u5C5E\u6027\u7684\u6587\u672C\u8282\u70B9");
+    }
     let textAdded = 0;
     let varAdded = 0;
     let existing = 0;
@@ -884,8 +899,23 @@
       }
       if (changed) writeCMContainer(textNode, container);
     }
-    figma.currentPage.selection = [frame];
+    figma.currentPage.selection = selection;
     return { total: textNodes.length, textAdded, varAdded, existing, conflicts };
+  }
+  function collectSelectedTextNodes(selection) {
+    const map = /* @__PURE__ */ new Map();
+    for (const node of selection) {
+      if (node.type === "TEXT") {
+        map.set(node.id, node);
+        continue;
+      }
+      if ("findAll" in node) {
+        for (const child of node.findAll((candidate) => candidate.type === "TEXT")) {
+          map.set(child.id, child);
+        }
+      }
+    }
+    return Array.from(map.values());
   }
   function buildAutoFrameName(projectName, translatedFrameName, width, height) {
     const project = toFrameNameSegment(projectName) || "Project";
