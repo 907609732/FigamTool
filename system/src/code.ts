@@ -955,16 +955,27 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
     salt,
     sign
   });
-  let response: Response;
-  try {
-    response = await fetch("https://fanyi-api.baidu.com/api/trans/vip/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: query
-    });
-  } catch (error) {
+  let response: Response | null = null;
+  let lastError: unknown = null;
+  const endpoints = [
+    "https://api.fanyi.baidu.com/api/trans/vip/translate",
+    "https://fanyi-api.baidu.com/api/trans/vip/translate"
+  ];
+  for (const endpoint of endpoints) {
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: query
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!response) {
     throw new Error(
-      `百度翻译网络请求失败：${errorMessage(error)}。请确认插件使用的是最新 manifest，networkAccess 需要允许 https://fanyi-api.baidu.com。`
+      `百度翻译网络请求失败：${errorMessage(lastError)}。请重新导入插件 manifest，并确认 networkAccess 已允许 https://api.fanyi.baidu.com 和 https://fanyi-api.baidu.com。`
     );
   }
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);

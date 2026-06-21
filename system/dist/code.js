@@ -1072,16 +1072,27 @@
       salt,
       sign
     });
-    let response;
-    try {
-      response = await fetch("https://fanyi-api.baidu.com/api/trans/vip/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: query
-      });
-    } catch (error) {
+    let response = null;
+    let lastError = null;
+    const endpoints = [
+      "https://api.fanyi.baidu.com/api/trans/vip/translate",
+      "https://fanyi-api.baidu.com/api/trans/vip/translate"
+    ];
+    for (const endpoint of endpoints) {
+      try {
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: query
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!response) {
       throw new Error(
-        `\u767E\u5EA6\u7FFB\u8BD1\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A${errorMessage(error)}\u3002\u8BF7\u786E\u8BA4\u63D2\u4EF6\u4F7F\u7528\u7684\u662F\u6700\u65B0 manifest\uFF0CnetworkAccess \u9700\u8981\u5141\u8BB8 https://fanyi-api.baidu.com\u3002`
+        `\u767E\u5EA6\u7FFB\u8BD1\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A${errorMessage(lastError)}\u3002\u8BF7\u91CD\u65B0\u5BFC\u5165\u63D2\u4EF6 manifest\uFF0C\u5E76\u786E\u8BA4 networkAccess \u5DF2\u5141\u8BB8 https://api.fanyi.baidu.com \u548C https://fanyi-api.baidu.com\u3002`
       );
     }
     if (!response.ok) throw new Error(`\u767E\u5EA6\u7FFB\u8BD1\u8BF7\u6C42\u5931\u8D25\uFF1A${response.status} ${response.statusText}`);
