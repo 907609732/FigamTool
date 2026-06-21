@@ -85,10 +85,12 @@
       .selection-item { display: grid; gap: 2px; margin-bottom: 6px; }
       .selection-item span, footer, small { color: var(--figma-color-text-secondary, #666); }
       .term-list { display: grid; gap: 6px; }
-      .term-card { display: grid; gap: 2px; min-height: 44px; padding: 7px 8px; text-align: left; }
+      .term-card { position: relative; display: grid; gap: 2px; min-height: 44px; padding: 7px 8px; text-align: left; }
       .term-card.active { border-color: #0a66ff; background: var(--figma-color-bg-hover, #f3f4f6); }
       .term-card strong, .selection-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .term-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .term-card .term-mode { position: absolute; top: 7px; right: 8px; max-width: 88px; padding: 1px 6px; border-radius: 999px; background: rgba(10, 102, 255, .08); color: #0a66ff; font-size: 10px; line-height: 14px; text-align: center; }
+      .term-card .term-meta { padding-right: 94px; }
       .editor-shell { display: grid; gap: 10px; }
       .editor-card { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--figma-color-border, #ddd); border-radius: 8px; background: rgba(10, 102, 255, .03); }
       .editor-card .panel-title-row span { color: var(--figma-color-text-secondary, #666); font-size: 11px; }
@@ -541,7 +543,7 @@
         if (terms.length && !terms.some(function(entry) { return entry.id === activeTermId; })) activeTermId = terms[0].id;
         if (!terms.length && config.lexicon.length) activeTermId = config.lexicon[0].id;
         document.getElementById("termList").innerHTML = terms.length ? terms.map(function(entry) {
-          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small>' + esc(entry.label) + ' · ' + esc(kindLabel(entry.kind)) + '</small><small>' + (config.applyPropertiesOnRename ? "改名 + 当前方案" : "仅改名") + '</small></button>';
+          return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small class="term-meta">' + esc(entry.label) + ' · ' + esc(kindLabel(entry.kind)) + '</small><span class="term-mode">' + esc(config.applyPropertiesOnRename ? "改名+方案" : "仅改名") + '</span></button>';
         }).join("") : '<div class="empty">当前选中节点类型没有可用词条，请新增一个 ' + esc(kindLabel(selectedKind())) + ' 词条。</div>';
         document.querySelectorAll("[data-apply-term]").forEach(function(btn) {
           btn.onclick = function() {
