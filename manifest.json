@@ -7,15 +7,17 @@
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": [
-      "http://127.0.0.1:37123",
-      "http://localhost:37123",
       "https://api.fanyi.baidu.com",
       "https://fanyi-api.baidu.com",
       "https://api.openai.com",
       "https://api.moonshot.cn"
     ],
-    "devAllowedDomains": ["*"],
-    "reasoning": "Baidu translation naming and optional AI naming suggestions call these configured API endpoints. Development builds may test other user-configured endpoints."
+    "devAllowedDomains": [
+      "*",
+      "http://127.0.0.1:37123",
+      "http://localhost:37123"
+    ],
+    "reasoning": "Baidu translation naming and optional AI naming suggestions call these configured API endpoints. Development builds may test other user-configured endpoints, including a local translation bridge."
   },
   "documentAccess": "dynamic-page"
 }
