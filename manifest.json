@@ -12,11 +12,8 @@
       "https://api.openai.com",
       "https://api.moonshot.cn"
     ],
-    "devAllowedDomains": [
-      "*",
-      "http://localhost:37123"
-    ],
-    "reasoning": "Baidu translation naming and optional AI naming suggestions call these configured API endpoints. Development builds may test other user-configured endpoints, including a local translation bridge."
+    "devAllowedDomains": ["*"],
+    "reasoning": "Baidu translation naming and optional AI naming suggestions call these configured API endpoints."
   },
   "documentAccess": "dynamic-page"
 }

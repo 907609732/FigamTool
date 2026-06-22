@@ -19,10 +19,6 @@ import {
 const CONFIG_KEY = "ai-auto-namer-config";
 const PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
 const CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
-const pendingUiTranslationRequests = new Map<
-  string,
-  { resolve: (translated: string[]) => void; reject: (error: Error) => void }
->();
 
 figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
 
@@ -38,18 +34,6 @@ figma.on("selectionchange", async () => {
 
 figma.ui.onmessage = async (message: UiToPluginMessage) => {
   try {
-    if (message.type === "BAIDU_TRANSLATION_RESULT") {
-      const pending = pendingUiTranslationRequests.get(message.requestId);
-      if (!pending) return;
-      pendingUiTranslationRequests.delete(message.requestId);
-      if (message.error) {
-        pending.reject(new Error(message.error));
-      } else {
-        pending.resolve(Array.isArray(message.translated) ? message.translated : []);
-      }
-      return;
-    }
-
     if (message.type === "SCAN_SELECTION") {
       post({ type: "SELECTION", selection: await getSelectionSummary() });
       return;
@@ -973,11 +957,11 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
   });
   let response: Response | null = null;
   let lastError: unknown = null;
-  const remoteEndpoints = [
+  const endpoints = [
     "https://api.fanyi.baidu.com/api/trans/vip/translate",
     "https://fanyi-api.baidu.com/api/trans/vip/translate"
   ];
-  for (const endpoint of remoteEndpoints) {
+  for (const endpoint of endpoints) {
     try {
       response = await fetch(endpoint, {
         method: "POST",
@@ -989,22 +973,7 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
       lastError = error;
     }
   }
-  if (!response) {
-    try {
-      return await requestLocalBridgeTranslation(query);
-    } catch (bridgeError) {
-      lastError = bridgeError;
-    }
-  }
-  if (!response) {
-    try {
-      return await requestBaiduTranslationViaUi(query, remoteEndpoints.concat(localBridgeEndpoints()));
-    } catch (uiError) {
-      throw new Error(
-        `百度翻译网络请求失败：${errorMessage(lastError)}；UI 兜底也失败：${errorMessage(uiError)}。请重新导入插件 manifest，并确认 networkAccess 已允许 https://api.fanyi.baidu.com 和 https://fanyi-api.baidu.com。`
-      );
-    }
-  }
+  if (!response) throw new Error(`百度翻译网络请求失败：${errorMessage(lastError)}。请确认插件 manifest 已允许 https://api.fanyi.baidu.com 和 https://fanyi-api.baidu.com。`);
   if (!response.ok) throw new Error(`百度翻译请求失败：${response.status} ${response.statusText}`);
   const payload = await response.json();
   if (payload?.error_code) throw new Error(`百度翻译失败：${payload.error_code} ${payload.error_msg || ""}`.trim());
@@ -1013,51 +982,6 @@ async function requestBaiduTranslationResults(text: string, settings: TranslateS
     : [];
   if (!translated.length || !translated.some((item) => item.trim())) throw new Error("百度翻译没有返回有效结果");
   return translated;
-}
-
-async function requestBaiduTranslationViaUi(query: string, endpoints: string[]): Promise<string[]> {
-  const requestId = `baidu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  return await new Promise<string[]>((resolve, reject) => {
-    pendingUiTranslationRequests.set(requestId, { resolve, reject });
-    post({ type: "REQUEST_BAIDU_TRANSLATION", requestId, query, endpoints });
-    setTimeout(() => {
-      const pending = pendingUiTranslationRequests.get(requestId);
-      if (!pending) return;
-      pendingUiTranslationRequests.delete(requestId);
-      reject(new Error("UI 翻译请求超时"));
-    }, 12000);
-  });
-}
-
-async function requestLocalBridgeTranslation(query: string): Promise<string[]> {
-  let lastError: unknown = null;
-  for (const endpoint of localBridgeEndpoints()) {
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: query
-      });
-      if (!response.ok) throw new Error(`本地桥接请求失败：${response.status} ${response.statusText}`);
-      const payload = await response.json();
-      if (payload?.error_code) throw new Error(`百度翻译失败：${payload.error_code} ${payload.error_msg || ""}`.trim());
-      const translated: string[] = Array.isArray(payload?.trans_result)
-        ? payload.trans_result.map((item: { dst?: string }) => item.dst || "")
-        : [];
-      if (!translated.length || !translated.some((item) => item.trim())) throw new Error("本地桥接没有返回有效翻译结果");
-      return translated;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw new Error(`本地翻译桥接失败：${errorMessage(lastError)}`);
-}
-
-function localBridgeEndpoints(): string[] {
-  return [
-    "http://127.0.0.1:37123/api/trans/vip/translate",
-    "http://localhost:37123/api/trans/vip/translate"
-  ];
 }
 
 function encodeQuery(values: Record<string, string>): string {

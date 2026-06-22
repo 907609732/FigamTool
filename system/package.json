@@ -1,12 +1,11 @@
 {
   "name": "figma-ai-auto-namer",
-  "version": "0.1.39",
+  "version": "0.1.40",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:test": "node scripts/build.mjs --test-config",
-    "baidu-bridge": "node scripts/baidu-bridge.mjs",
     "typecheck": "tsc --noEmit",
     "dev": "node scripts/build.mjs --watch"
   },

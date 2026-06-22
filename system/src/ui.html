@@ -276,18 +276,18 @@
         <h2>百度翻译</h2>
         <div class="grid">
           <div class="two grid">
-            <div class="setting-field"><label>App ID<input id="baiduAppId"></label><button class="setting-help" data-setting-help="百度翻译 App ID" data-setting-description="百度翻译开放平台分配的应用标识，用于识别调用方。" title="百度翻译开放平台分配的应用标识">？</button></div>
-            <div class="setting-field"><label>密钥<input id="baiduSecretKey" type="password"></label><button class="setting-help" data-setting-help="百度翻译密钥" data-setting-description="与 App ID 配套的百度翻译密钥，用于生成接口签名。请勿上传到公开仓库。" title="用于生成百度翻译接口签名，请妥善保管">？</button></div>
+            <div class="setting-field"><label>App ID<input id="baiduAppId"></label><button class="setting-help" data-setting-help="百度翻译 App ID" data-setting-description="在百度翻译开放平台创建应用后拿到的应用编号，用来识别当前调用的是哪一个翻译应用。" title="百度翻译开放平台分配的应用标识">？</button></div>
+            <div class="setting-field"><label>密钥<input id="baiduSecretKey" type="password"></label><button class="setting-help" data-setting-help="百度翻译密钥" data-setting-description="和 App ID 配套的签名密钥。插件会用它生成百度接口签名，只保存在当前设备，请不要明文上传到公开仓库。" title="用于生成百度翻译接口签名，请妥善保管">？</button></div>
           </div>
           <div class="two grid">
-            <div class="setting-field"><label>From<input id="baiduFrom" placeholder="zh"></label><button class="setting-help" data-setting-help="源语言 From" data-setting-description="输入文字的语言代码。中文通常填写 zh，自动识别可填写 auto。" title="输入文字的语言代码">？</button></div>
-            <div class="setting-field"><label>To<input id="baiduTo" placeholder="en"></label><button class="setting-help" data-setting-help="目标语言 To" data-setting-description="翻译结果的语言代码。节点英文命名通常填写 en。" title="翻译结果的语言代码">？</button></div>
+            <div class="setting-field"><label>From<input id="baiduFrom" placeholder="zh"></label><button class="setting-help" data-setting-help="源语言 From" data-setting-description="待翻译文本的语言代码。平时做中文节点转英文命名时，建议保持 zh；需要自动识别时可填写 auto。" title="输入文字的语言代码">？</button></div>
+            <div class="setting-field"><label>To<input id="baiduTo" placeholder="en"></label><button class="setting-help" data-setting-help="目标语言 To" data-setting-description="翻译输出语言代码。当前命名工作流一般保持 en，这样翻译结果会直接用于英文节点名。" title="翻译结果的语言代码">？</button></div>
           </div>
           <div class="two grid">
             <button id="saveTranslateBtn" title="将百度翻译设置保存到当前 Figma 插件的本机存储">保存百度翻译</button>
             <button id="loadTestTranslateBtn" title="输入口令后，解锁仓库里加密保存的测试翻译配置并自动填入当前设备">启动测试翻译 API</button>
           </div>
-          <small>测试按钮会从仓库里的加密配置解锁百度翻译测试账号，输入口令后只会写入当前设备，不会在界面里保存口令。</small>
+          <small>正式使用时，请填写你自己的百度翻译 App ID 和密钥，常规推荐保持 From=zh、To=en。点击“保存百度翻译”后只会写入当前设备。测试按钮用于把仓库里的加密测试配置写入当前设备，方便换电脑验证，不会在界面里保存口令。</small>
         </div>
         <h2>AI 设置</h2>
         <div class="grid">
@@ -1069,29 +1069,6 @@
         row.push(cell); rows.push(row);
         return rows.filter(function(r) { return r.some(function(c) { return c.trim(); }); });
       }
-      async function requestBaiduTranslationFromUi(message) {
-        var lastError = "";
-        for (var i = 0; i < message.endpoints.length; i += 1) {
-          try {
-            var response = await fetch(message.endpoints[i], {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: message.query
-            });
-            if (!response.ok) throw new Error("HTTP " + response.status + " " + response.statusText);
-            var payload = await response.json();
-            if (payload && payload.error_code) throw new Error(String(payload.error_code) + " " + (payload.error_msg || ""));
-            var translated = Array.isArray(payload && payload.trans_result)
-              ? payload.trans_result.map(function(item) { return item && item.dst ? item.dst : ""; })
-              : [];
-            post({ type: "BAIDU_TRANSLATION_RESULT", requestId: message.requestId, translated: translated });
-            return;
-          } catch (error) {
-            lastError = error && error.message ? error.message : String(error);
-          }
-        }
-        post({ type: "BAIDU_TRANSLATION_RESULT", requestId: message.requestId, error: lastError || "UI 翻译请求失败" });
-      }
       function download(filename, content, type) {
         var blob = new Blob(["\ufeff" + content], { type: type + ";charset=utf-8" });
         var link = document.createElement("a");
@@ -1175,7 +1152,6 @@
       window.onmessage = function(event) {
         var message = event.data.pluginMessage;
         if (!message) return;
-        if (message.type === "REQUEST_BAIDU_TRANSLATION") { requestBaiduTranslationFromUi(message); return; }
         if (message.type === "READY") { config = message.config || defaultConfig(); normalizeConfig(); selection = message.selection; renderAll(); }
         if (message.type === "SELECTION") { selection = message.selection; renderSelection(); renderTerms(); renderTermEditor(); }
         if (message.type === "APPLY_RESULT" || message.type === "PROJECT_CONFIG_WRITTEN") status(message.message);

@@ -132,7 +132,6 @@ export type PluginToUiMessage =
   | { type: "APPLY_RESULT"; message: string }
   | { type: "CONFIG_EXPORTED"; json: string }
   | { type: "PROJECT_CONFIG_WRITTEN"; message: string }
-  | { type: "REQUEST_BAIDU_TRANSLATION"; requestId: string; query: string; endpoints: string[] }
   | { type: "ERROR"; message: string };
 
 export type UiToPluginMessage =
@@ -151,7 +150,6 @@ export type UiToPluginMessage =
   | { type: "ADD_TEXT_CONTROL_PROPERTIES" }
   | { type: "CREATE_VARIANTS"; mode: VariantMode }
   | { type: "INSERT_TEMPLATE"; templateId: string; config: PluginConfig }
-  | { type: "BAIDU_TRANSLATION_RESULT"; requestId: string; translated?: string[]; error?: string }
   | { type: "RESIZE_UI"; width: number; height: number };
 
 export const defaultConfig: PluginConfig = {
