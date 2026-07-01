@@ -67,6 +67,7 @@
       .panel-title-row .help-btn { flex: 0 0 auto; }
       .panel-title-row .title-actions { display: flex; align-items: center; gap: 6px; }
       .button-help-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
+      .button-help-row.with-settings { grid-template-columns: minmax(0, 1fr) 32px 32px; }
       .button-help-row > button:first-child { min-width: 0; }
       .variant-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .variant-buttons button { display: grid; gap: 3px; min-height: 58px; padding: 7px 8px; line-height: 14px; text-align: left; }
@@ -235,11 +236,12 @@
       <section id="tools">
         <div id="toolsSelectionPanel" class="panel"></div>
         <div class="panel grid">
-          <div class="button-help-row">
+          <div class="button-help-row with-settings">
             <button id="autoNameFrameBtn" class="primary" title="按工程名、画板英文翻译和 IOS/PC/Item 自动命名画板，同时整理内部节点">一键整理并命名画板</button>
-            <button class="help-btn" data-setting-help="一键整理并命名画板" data-setting-description="选中一个主画板后执行。插件会先判断画板分辨率是 IOS、PC 还是 Item，再按“工程名_英文画板名_平台”给主画板命名，同时递归整理内部节点名称。" title="查看一键整理并命名画板说明">？</button>
+            <button id="autoNameFrameSettingsBtn" class="icon-only-btn" title="整理规则设置">⚙</button>
+            <button class="help-btn" data-setting-help="一键整理并命名画板" data-setting-description="选中一个主画板后执行。插件会先按整理规则处理隐藏节点、Mask、Group，再判断画板分辨率是 IOS、PC 还是 Item，最后按“工程名_英文画板名_平台”给主画板命名，并递归整理内部节点名称。" title="查看一键整理并命名画板说明">？</button>
           </div>
-          <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名。</small>
+          <small>选中一个主画板后执行。主画板名会按“Figma工程名_画板英文_IOS/PC/Item”生成，内部子节点会按词库规则整理命名；整理前会先按“整理规则设置”处理隐藏节点、Mask 和 Group。</small>
         </div>
         <div class="panel grid">
           <div class="button-help-row">
@@ -268,7 +270,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.40</span>
+            <span id="versionText">V0.1.41</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -394,6 +396,30 @@
           </div>
         </div>
       </div>
+      <div id="autoNameFrameSettingsModal" class="modal-overlay" hidden>
+        <div class="modal-card">
+          <div class="panel-title-row">
+            <h2>整理规则设置</h2>
+            <button class="help-btn" data-setting-help="整理规则设置" data-setting-description="这里是一键整理并命名画板专用的清理规则。当前第一版支持删除隐藏节点、删除 Mask、解散 Group，后续旧版 1000 整理项也会继续补到这里。">？</button>
+          </div>
+          <div class="grid">
+            <div class="setting-field setting-check">
+              <label class="check"><input id="autoNameRemoveHiddenNodes" type="checkbox">删除隐藏节点</label>
+              <button class="setting-help" data-setting-help="删除隐藏节点" data-setting-description="删除 visible=false 的节点及其整棵子树。执行结果里的“删除隐藏”数量会把一起删掉的子节点也算进去。" title="删除隐藏节点及其整棵子树">？</button>
+            </div>
+            <div class="setting-field setting-check">
+              <label class="check"><input id="autoNameUngroupGroups" type="checkbox">解散 Group</label>
+              <button class="setting-help" data-setting-help="解散 Group" data-setting-description="把 Group 的子节点提到父级，尽量保留相对位置不变。如果关闭，Group 会保留，只继续整理内部可命名节点。" title="解散 Group 并把子节点提到父级">？</button>
+            </div>
+            <div class="setting-field setting-check">
+              <label class="check"><input id="autoNameRemoveMaskNodes" type="checkbox">删除 Mask</label>
+              <button class="setting-help" data-setting-help="删除 Mask" data-setting-description="删除 isMask=true 的遮罩节点。如果关闭，遮罩节点会保留在画板里，但不会参与自动命名。" title="删除 isMask=true 的遮罩节点">？</button>
+            </div>
+            <small>这是“一键整理并命名画板”的专用规则区。当前第一版先开放隐藏节点、Mask、Group 三项，后续旧版 1000 整理逻辑会继续补到这里。</small>
+          </div>
+          <button id="closeAutoNameFrameSettingsBtn">关闭</button>
+        </div>
+      </div>
     </main>
     <script>
       var nodeKinds = ["TEXT","IMAGE","COMPONENT","FRAME","SHAPE","NODE"];
@@ -466,7 +492,8 @@
           applyPropertiesOnRename: true,
           templates: defaultTemplates(),
           aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma UI nodes. Return JSON array with id and name." },
-          translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en", autoFillFromSelection: true }
+          translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en", autoFillFromSelection: true },
+          autoNameFrameSettings: { removeHiddenNodes: true, ungroupGroups: true, removeMaskNodes: true }
         };
       }
       function defaultTemplates() {
@@ -533,6 +560,7 @@
         config.translateSettings = Object.assign({}, fallback.translateSettings, config.translateSettings || {});
         if (config.translateSettings.autoFillFromSelection == null) config.translateSettings.autoFillFromSelection = true;
         if (!config.translateSettings.secretKey && localTestConfig && localTestConfig.translateSettings) Object.assign(config.translateSettings, localTestConfig.translateSettings);
+        config.autoNameFrameSettings = Object.assign({}, fallback.autoNameFrameSettings, config.autoNameFrameSettings || {});
         if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
       }
       function normalizeTemplates(source, fallback) {
@@ -859,6 +887,13 @@
       }
       function syncAi() { config.aiSettings.enabled = checked("aiEnabled"); config.aiSettings.provider = value("aiProvider"); config.aiSettings.providerKeys = config.aiSettings.providerKeys || {}; config.aiSettings.apiKey = value("aiKey"); config.aiSettings.providerKeys[config.aiSettings.provider] = config.aiSettings.apiKey; config.aiSettings.baseUrl = value("aiBaseUrl"); config.aiSettings.model = value("aiModel"); config.aiSettings.promptTemplate = value("aiPrompt"); save(); }
       function syncTranslate(silent) { config.translateSettings.appId = value("baiduAppId"); config.translateSettings.secretKey = value("baiduSecretKey"); config.translateSettings.from = value("baiduFrom") || "zh"; config.translateSettings.to = value("baiduTo") || "en"; config.translateSettings.autoFillFromSelection = checked("autoFillTranslateText"); save(); if (!silent) status("百度翻译配置已保存"); }
+      function syncAutoNameFrameSettings(silent) {
+        config.autoNameFrameSettings.removeHiddenNodes = checked("autoNameRemoveHiddenNodes");
+        config.autoNameFrameSettings.ungroupGroups = checked("autoNameUngroupGroups");
+        config.autoNameFrameSettings.removeMaskNodes = checked("autoNameRemoveMaskNodes");
+        save();
+        if (!silent) status("整理规则设置已保存");
+      }
       function base64ToBytes(text) {
         var binary = atob(text);
         var bytes = new Uint8Array(binary.length);
@@ -986,6 +1021,16 @@
       function hideTranslateUnlockModal() {
         document.getElementById("translateUnlockModal").hidden = true;
       }
+      function showAutoNameFrameSettingsModal() {
+        setChecked("autoNameRemoveHiddenNodes", config.autoNameFrameSettings.removeHiddenNodes);
+        setChecked("autoNameUngroupGroups", config.autoNameFrameSettings.ungroupGroups);
+        setChecked("autoNameRemoveMaskNodes", config.autoNameFrameSettings.removeMaskNodes);
+        document.getElementById("autoNameFrameSettingsModal").hidden = false;
+        bindHelpButtons(document.getElementById("autoNameFrameSettingsModal"));
+      }
+      function hideAutoNameFrameSettingsModal() {
+        document.getElementById("autoNameFrameSettingsModal").hidden = true;
+      }
       function applyAiPreset(provider) {
         var previousProvider = config.aiSettings.provider || "openai-compatible";
         config.aiSettings.providerKeys = config.aiSettings.providerKeys || {};
@@ -1104,6 +1149,9 @@
       document.getElementById("confirmTranslateUnlockBtn").onclick = function() { loadTestTranslatePreset(); };
       document.getElementById("translateUnlockModal").onclick = function(event) { if (event.target.id === "translateUnlockModal") hideTranslateUnlockModal(); };
       document.getElementById("translateUnlockPassphrase").onkeydown = function(event) { if (event.key === "Enter") loadTestTranslatePreset(); };
+      document.getElementById("autoNameFrameSettingsBtn").onclick = showAutoNameFrameSettingsModal;
+      document.getElementById("closeAutoNameFrameSettingsBtn").onclick = hideAutoNameFrameSettingsModal;
+      document.getElementById("autoNameFrameSettingsModal").onclick = function(event) { if (event.target.id === "autoNameFrameSettingsModal") hideAutoNameFrameSettingsModal(); };
       document.getElementById("autoNameFrameBtn").onclick = autoNameFrame;
       document.getElementById("addTextControlPropsBtn").onclick = addTextControlProperties;
       document.getElementById("translateBtn").onclick = function() { translateAndRename(false); };
@@ -1120,6 +1168,7 @@
       document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
       ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo","autoFillTranslateText"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
+      ["autoNameRemoveHiddenNodes","autoNameUngroupGroups","autoNameRemoveMaskNodes"].forEach(function(id) { document.getElementById(id).onchange = syncAutoNameFrameSettings; });
       var resizeFrame = 0;
       var pendingResize = null;
       function sendPendingResize() {

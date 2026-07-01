@@ -264,6 +264,11 @@
       from: "zh",
       to: "en",
       autoFillFromSelection: true
+    },
+    autoNameFrameSettings: {
+      removeHiddenNodes: true,
+      ungroupGroups: true,
+      removeMaskNodes: true
     }
   };
   var localTestConfig = {};
@@ -354,7 +359,7 @@
         const result = await autoNameFrame(message.config);
         post({
           type: "APPLY_RESULT",
-          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u753B\u677F ${result.frameName}\uFF0C\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u89E3\u6563 Group ${result.groups} \u4E2A\uFF0C\u5220\u9664 Mask ${result.masks} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
+          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u753B\u677F ${result.frameName}\uFF0C\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u5220\u9664\u9690\u85CF ${result.removedHidden} \u4E2A\uFF0C\u5220\u9664 Mask ${result.removedMasks} \u4E2A\uFF0C\u89E3\u6563 Group ${result.ungroupedGroups} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
         });
         figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.frameName}`);
         return;
@@ -398,19 +403,20 @@
     await figma.clientStorage.setAsync(CONFIG_KEY, normalizeConfig(config));
   }
   function normalizeConfig(input) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     if (!input || typeof input !== "object") return defaultConfig;
     const partial = input;
     const aiSettings = (_a = partial.aiSettings) != null ? _a : {};
     const translateSettings = (_b = partial.translateSettings) != null ? _b : {};
     const normalizedAiSettings = Object.assign({}, defaultConfig.aiSettings, aiSettings);
     const normalizedTranslateSettings = Object.assign({}, defaultConfig.translateSettings, translateSettings);
+    const normalizedAutoNameFrameSettings = Object.assign({}, defaultConfig.autoNameFrameSettings, (_c = partial.autoNameFrameSettings) != null ? _c : {});
     if (!normalizedAiSettings.apiKey && localTestConfig.aiSettings) Object.assign(normalizedAiSettings, localTestConfig.aiSettings);
     const normalizedProviderKeys = Object.assign(
       {},
       defaultConfig.aiSettings.providerKeys,
       aiSettings.providerKeys,
-      (_c = localTestConfig.aiSettings) == null ? void 0 : _c.providerKeys
+      (_d = localTestConfig.aiSettings) == null ? void 0 : _d.providerKeys
     );
     normalizedAiSettings.providerKeys = normalizedProviderKeys;
     if (normalizedAiSettings.apiKey && normalizedAiSettings.provider) {
@@ -426,10 +432,11 @@
       lexicon: normalizeLexicon(partial.lexicon),
       propertyPresets,
       activePropertyPresetId,
-      applyPropertiesOnRename: (_d = partial.applyPropertiesOnRename) != null ? _d : true,
+      applyPropertiesOnRename: (_e = partial.applyPropertiesOnRename) != null ? _e : true,
       templates: normalizeTemplates(partial.templates),
       aiSettings: normalizedAiSettings,
-      translateSettings: normalizedTranslateSettings
+      translateSettings: normalizedTranslateSettings,
+      autoNameFrameSettings: normalizedAutoNameFrameSettings
     };
   }
   function normalizeTemplates(input) {
@@ -798,6 +805,7 @@
     const root = selection[0];
     const normalized = normalizeConfig(config);
     const ruleByKind = new Map(normalized.namingRules.map((rule) => [rule.kind, rule.prefix]));
+    const cleanup = cleanupAutoNameFrame(root, normalized.autoNameFrameSettings);
     const candidates = collectAutoNameCandidates(root);
     const originalFrameName = root.name.trim() || "Frame";
     const sources = [originalFrameName, ...candidates.map((candidate) => candidate.source)];
@@ -805,7 +813,6 @@
     const translations = translationResult.translated;
     const frameTranslation = (_a = translations.get(originalFrameName)) != null ? _a : originalFrameName;
     root.name = buildAutoFrameName(figma.root.name, frameTranslation, root.width, root.height);
-    const cleanup = cleanGroupsAndMasks(root);
     const counters = /* @__PURE__ */ new Map();
     let renamed = 0;
     let skipped = cleanup.skipped;
@@ -829,7 +836,14 @@
     }
     figma.currentPage.selection = [root];
     if (translationResult.warning) figma.notify(translationResult.warning);
-    return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+    return {
+      frameName: root.name,
+      renamed,
+      removedHidden: cleanup.removedHidden,
+      removedMasks: cleanup.removedMasks,
+      ungroupedGroups: cleanup.ungroupedGroups,
+      skipped
+    };
   }
   function readCMContainer(node) {
     const raw = node.getPluginData(CM_PROPERTY_DATA_KEY);
@@ -954,16 +968,29 @@
     const fallback = kind.charAt(0) + kind.slice(1).toLowerCase();
     return raw || fallback;
   }
-  function cleanGroupsAndMasks(root) {
-    let groups = 0;
-    let masks = 0;
+  function cleanupAutoNameFrame(root, settings) {
+    let removedHidden = 0;
+    let removedMasks = 0;
+    let ungroupedGroups = 0;
     let skipped = 0;
+    const removeNodeTree = (node) => {
+      const count = countSceneNodeTree(node);
+      node.remove();
+      return count;
+    };
     const visit = (container) => {
       for (const node of Array.from(container.children)) {
-        if (isMaskNode(node)) {
+        if (settings.removeHiddenNodes && "visible" in node && !node.visible) {
           try {
-            node.remove();
-            masks += 1;
+            removedHidden += removeNodeTree(node);
+          } catch (e) {
+            skipped += 1;
+          }
+          continue;
+        }
+        if (settings.removeMaskNodes && isMaskNode(node)) {
+          try {
+            removedMasks += removeNodeTree(node);
           } catch (e) {
             skipped += 1;
           }
@@ -971,6 +998,7 @@
         }
         if (node.type === "GROUP") {
           visit(node);
+          if (!settings.ungroupGroups) continue;
           try {
             const parent = node.parent;
             if (!parent || !("insertChild" in parent) || !("children" in parent)) throw new Error("Group \u65E0\u6CD5\u89E3\u6563");
@@ -982,7 +1010,7 @@
               index += 1;
             }
             if (!node.removed) node.remove();
-            groups += 1;
+            ungroupedGroups += 1;
           } catch (e) {
             skipped += 1;
           }
@@ -992,10 +1020,14 @@
       }
     };
     visit(root);
-    return { groups, masks, skipped };
+    return { removedHidden, removedMasks, ungroupedGroups, skipped };
   }
   function isMaskNode(node) {
     return "isMask" in node && node.isMask;
+  }
+  function countSceneNodeTree(node) {
+    if (!("children" in node)) return 1;
+    return 1 + node.children.reduce((sum, child) => sum + countSceneNodeTree(child), 0);
   }
   async function translateSources(sources, settings) {
     const unique = Array.from(new Set(sources));

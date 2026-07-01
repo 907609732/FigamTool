@@ -114,7 +114,7 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
       const result = await autoNameFrame(message.config);
       post({
         type: "APPLY_RESULT",
-        message: `一键命名完成：画板 ${result.frameName}，命名 ${result.renamed} 个，解散 Group ${result.groups} 个，删除 Mask ${result.masks} 个，跳过 ${result.skipped} 个`
+        message: `一键命名完成：画板 ${result.frameName}，命名 ${result.renamed} 个，删除隐藏 ${result.removedHidden} 个，删除 Mask ${result.removedMasks} 个，解散 Group ${result.ungroupedGroups} 个，跳过 ${result.skipped} 个`
       });
       figma.notify(`一键命名完成：${result.frameName}`);
       return;
@@ -173,6 +173,7 @@ function normalizeConfig(input: unknown): PluginConfig {
   const translateSettings: Partial<TranslateSettings> = partial.translateSettings ?? {};
   const normalizedAiSettings = Object.assign({}, defaultConfig.aiSettings, aiSettings);
   const normalizedTranslateSettings = Object.assign({}, defaultConfig.translateSettings, translateSettings);
+  const normalizedAutoNameFrameSettings = Object.assign({}, defaultConfig.autoNameFrameSettings, partial.autoNameFrameSettings ?? {});
   if (!normalizedAiSettings.apiKey && localTestConfig.aiSettings) Object.assign(normalizedAiSettings, localTestConfig.aiSettings);
   const normalizedProviderKeys = Object.assign(
     {},
@@ -199,7 +200,8 @@ function normalizeConfig(input: unknown): PluginConfig {
     applyPropertiesOnRename: partial.applyPropertiesOnRename ?? true,
     templates: normalizeTemplates(partial.templates),
     aiSettings: normalizedAiSettings,
-    translateSettings: normalizedTranslateSettings
+    translateSettings: normalizedTranslateSettings,
+    autoNameFrameSettings: normalizedAutoNameFrameSettings
   };
 }
 
@@ -625,7 +627,7 @@ function isChildrenContainer(node: BaseNode | null): node is BaseNode & Children
 
 async function autoNameFrame(
   config: PluginConfig
-): Promise<{ frameName: string; renamed: number; groups: number; masks: number; skipped: number }> {
+): Promise<{ frameName: string; renamed: number; removedHidden: number; removedMasks: number; ungroupedGroups: number; skipped: number }> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
   if (selection.length !== 1 || selection[0].type !== "FRAME") {
@@ -635,6 +637,7 @@ async function autoNameFrame(
   const root = selection[0];
   const normalized = normalizeConfig(config);
   const ruleByKind = new Map(normalized.namingRules.map((rule) => [rule.kind, rule.prefix]));
+  const cleanup = cleanupAutoNameFrame(root, normalized.autoNameFrameSettings);
   const candidates = collectAutoNameCandidates(root);
   const originalFrameName = root.name.trim() || "Frame";
   const sources = [originalFrameName, ...candidates.map((candidate) => candidate.source)];
@@ -642,7 +645,6 @@ async function autoNameFrame(
   const translations = translationResult.translated;
   const frameTranslation = translations.get(originalFrameName) ?? originalFrameName;
   root.name = buildAutoFrameName(figma.root.name, frameTranslation, root.width, root.height);
-  const cleanup = cleanGroupsAndMasks(root);
   const counters = new Map<string, number>();
   let renamed = 0;
   let skipped = cleanup.skipped;
@@ -668,7 +670,14 @@ async function autoNameFrame(
 
   figma.currentPage.selection = [root];
   if (translationResult.warning) figma.notify(translationResult.warning);
-  return { frameName: root.name, renamed, groups: cleanup.groups, masks: cleanup.masks, skipped };
+  return {
+    frameName: root.name,
+    renamed,
+    removedHidden: cleanup.removedHidden,
+    removedMasks: cleanup.removedMasks,
+    ungroupedGroups: cleanup.ungroupedGroups,
+    skipped
+  };
 }
 
 interface CMPropertyDataContainer {
@@ -822,17 +831,35 @@ function getAutoNameSource(node: SceneNode, kind: NodeKind): string {
   return raw || fallback;
 }
 
-function cleanGroupsAndMasks(root: SceneNode & ChildrenMixin): { groups: number; masks: number; skipped: number } {
-  let groups = 0;
-  let masks = 0;
+function cleanupAutoNameFrame(
+  root: SceneNode & ChildrenMixin,
+  settings: PluginConfig["autoNameFrameSettings"]
+): { removedHidden: number; removedMasks: number; ungroupedGroups: number; skipped: number } {
+  let removedHidden = 0;
+  let removedMasks = 0;
+  let ungroupedGroups = 0;
   let skipped = 0;
+
+  const removeNodeTree = (node: SceneNode): number => {
+    const count = countSceneNodeTree(node);
+    node.remove();
+    return count;
+  };
 
   const visit = (container: SceneNode & ChildrenMixin) => {
     for (const node of Array.from(container.children)) {
-      if (isMaskNode(node)) {
+      if (settings.removeHiddenNodes && "visible" in node && !node.visible) {
         try {
-          node.remove();
-          masks += 1;
+          removedHidden += removeNodeTree(node);
+        } catch {
+          skipped += 1;
+        }
+        continue;
+      }
+
+      if (settings.removeMaskNodes && isMaskNode(node)) {
+        try {
+          removedMasks += removeNodeTree(node);
         } catch {
           skipped += 1;
         }
@@ -841,6 +868,7 @@ function cleanGroupsAndMasks(root: SceneNode & ChildrenMixin): { groups: number;
 
       if (node.type === "GROUP") {
         visit(node);
+        if (!settings.ungroupGroups) continue;
         try {
           const parent = node.parent;
           if (!parent || !("insertChild" in parent) || !("children" in parent)) throw new Error("Group 无法解散");
@@ -852,7 +880,7 @@ function cleanGroupsAndMasks(root: SceneNode & ChildrenMixin): { groups: number;
             index += 1;
           }
           if (!node.removed) node.remove();
-          groups += 1;
+          ungroupedGroups += 1;
         } catch {
           skipped += 1;
         }
@@ -864,11 +892,16 @@ function cleanGroupsAndMasks(root: SceneNode & ChildrenMixin): { groups: number;
   };
 
   visit(root);
-  return { groups, masks, skipped };
+  return { removedHidden, removedMasks, ungroupedGroups, skipped };
 }
 
 function isMaskNode(node: SceneNode): boolean {
   return "isMask" in node && node.isMask;
+}
+
+function countSceneNodeTree(node: SceneNode): number {
+  if (!("children" in node)) return 1;
+  return 1 + node.children.reduce((sum, child) => sum + countSceneNodeTree(child), 0);
 }
 
 async function translateSources(

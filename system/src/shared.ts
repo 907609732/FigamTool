@@ -85,6 +85,12 @@ export interface TranslateSettings {
   autoFillFromSelection: boolean;
 }
 
+export interface AutoNameFrameSettings {
+  removeHiddenNodes: boolean;
+  ungroupGroups: boolean;
+  removeMaskNodes: boolean;
+}
+
 export interface LexiconEntry {
   id: string;
   word: string;
@@ -116,6 +122,7 @@ export interface PluginConfig {
   templates: TemplateEntry[];
   aiSettings: AiSettings;
   translateSettings: TranslateSettings;
+  autoNameFrameSettings: AutoNameFrameSettings;
 }
 
 declare const __LOCAL_TEST_CONFIG__: Partial<PluginConfig> | null;
@@ -396,6 +403,11 @@ export const defaultConfig: PluginConfig = {
     from: "zh",
     to: "en",
     autoFillFromSelection: true
+  },
+  autoNameFrameSettings: {
+    removeHiddenNodes: true,
+    ungroupGroups: true,
+    removeMaskNodes: true
   }
 };
 
