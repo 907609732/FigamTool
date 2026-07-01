@@ -89,6 +89,8 @@ export interface AutoNameFrameSettings {
   removeHiddenNodes: boolean;
   ungroupGroups: boolean;
   removeMaskNodes: boolean;
+  addTextControlProperties: boolean;
+  addImageControlProperties: boolean;
 }
 
 export interface LexiconEntry {
@@ -407,7 +409,9 @@ export const defaultConfig: PluginConfig = {
   autoNameFrameSettings: {
     removeHiddenNodes: true,
     ungroupGroups: true,
-    removeMaskNodes: true
+    removeMaskNodes: true,
+    addTextControlProperties: false,
+    addImageControlProperties: false
   }
 };
 

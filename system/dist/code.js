@@ -268,7 +268,9 @@
     autoNameFrameSettings: {
       removeHiddenNodes: true,
       ungroupGroups: true,
-      removeMaskNodes: true
+      removeMaskNodes: true,
+      addTextControlProperties: false,
+      addImageControlProperties: false
     }
   };
   var localTestConfig = {};
@@ -279,6 +281,9 @@
   var CONFIG_KEY = "ai-auto-namer-config";
   var PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
   var CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
+  var CM_VAR_PROPERTY_KEY = "CMVarPropertyData";
+  var CM_TEXT_PROPERTY_KEY = "CMTextPropertyData";
+  var CM_IMAGE_PROPERTY_KEY = "CMImagePropertyData";
   figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
   void initialize();
   figma.on("selectionchange", async () => {
@@ -357,9 +362,14 @@
       }
       if (message.type === "AUTO_NAME_FRAME") {
         const result = await autoNameFrame(message.config);
+        const autoPropParts = [
+          result.textProps.total ? `\u6587\u672C\u5C5E\u6027 ${result.textProps.textAdded} \u4E2A` : "",
+          result.imageProps.total ? `\u56FE\u7247\u5C5E\u6027 ${result.imageProps.imageAdded} \u4E2A` : "",
+          result.textProps.varAdded || result.imageProps.varAdded ? `\u7A0B\u5E8F\u63A7\u5236 ${result.textProps.varAdded + result.imageProps.varAdded} \u4E2A` : ""
+        ].filter(Boolean);
         post({
           type: "APPLY_RESULT",
-          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u753B\u677F ${result.frameName}\uFF0C\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u5220\u9664\u9690\u85CF ${result.removedHidden} \u4E2A\uFF0C\u5220\u9664 Mask ${result.removedMasks} \u4E2A\uFF0C\u89E3\u6563 Group ${result.ungroupedGroups} \u4E2A\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
+          message: `\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A\u753B\u677F ${result.frameName}\uFF0C\u547D\u540D ${result.renamed} \u4E2A\uFF0C\u5220\u9664\u9690\u85CF ${result.removedHidden} \u4E2A\uFF0C\u5220\u9664 Mask ${result.removedMasks} \u4E2A\uFF0C\u89E3\u6563 Group ${result.ungroupedGroups} \u4E2A${autoPropParts.length ? `\uFF0C${autoPropParts.join("\uFF0C")}` : ""}\uFF0C\u8DF3\u8FC7 ${result.skipped} \u4E2A`
         });
         figma.notify(`\u4E00\u952E\u547D\u540D\u5B8C\u6210\uFF1A${result.frameName}`);
         return;
@@ -834,6 +844,8 @@
         skipped += 1;
       }
     }
+    const textProps = normalized.autoNameFrameSettings.addTextControlProperties ? addTextControlPropertiesToNodes(collectTextNodes(root)) : emptyTextControlPropertyResult();
+    const imageProps = normalized.autoNameFrameSettings.addImageControlProperties ? addImageControlPropertiesToNodes(collectImageNodes(root)) : emptyImageControlPropertyResult();
     figma.currentPage.selection = [root];
     if (translationResult.warning) figma.notify(translationResult.warning);
     return {
@@ -842,7 +854,9 @@
       removedHidden: cleanup.removedHidden,
       removedMasks: cleanup.removedMasks,
       ungroupedGroups: cleanup.ungroupedGroups,
-      skipped
+      skipped: skipped + textProps.conflicts + imageProps.conflicts,
+      textProps,
+      imageProps
     };
   }
   function readCMContainer(node) {
@@ -874,6 +888,15 @@
       WholeWordWrapping: false
     };
   }
+  function createCMImagePropertyData() {
+    return {};
+  }
+  function emptyTextControlPropertyResult() {
+    return { total: 0, textAdded: 0, varAdded: 0, existing: 0, conflicts: 0 };
+  }
+  function emptyImageControlPropertyResult() {
+    return { total: 0, imageAdded: 0, varAdded: 0, existing: 0, conflicts: 0 };
+  }
   async function addTextControlPropertiesToCurrentSelection() {
     await ensureCurrentPageLoaded();
     const selection = Array.from(figma.currentPage.selection);
@@ -884,6 +907,11 @@
     if (!textNodes.length) {
       throw new Error("\u5F53\u524D\u9009\u4E2D\u5185\u5BB9\u91CC\u6CA1\u6709\u53EF\u6302\u5C5E\u6027\u7684\u6587\u672C\u8282\u70B9");
     }
+    const result = addTextControlPropertiesToNodes(textNodes);
+    figma.currentPage.selection = selection;
+    return result;
+  }
+  function addTextControlPropertiesToNodes(textNodes) {
     let textAdded = 0;
     let varAdded = 0;
     let existing = 0;
@@ -891,14 +919,14 @@
     for (const textNode of textNodes) {
       const container = readCMContainer(textNode);
       const properties = container.PropertyDatas;
-      const hasVar = Boolean(properties.CMVarPropertyData);
-      const hasText = Boolean(properties.CMTextPropertyData);
+      const hasVar = Boolean(properties[CM_VAR_PROPERTY_KEY]);
+      const hasText = Boolean(properties[CM_TEXT_PROPERTY_KEY]);
       const hasTextConflict = Boolean(properties.CMRichTextPropertyData || properties.CMRollingNumberPropertyData);
       let changed = false;
       if (hasVar) {
         existing += 1;
       } else {
-        properties.CMVarPropertyData = {};
+        properties[CM_VAR_PROPERTY_KEY] = {};
         varAdded += 1;
         changed = true;
       }
@@ -907,14 +935,46 @@
       } else if (hasText) {
         existing += 1;
       } else {
-        properties.CMTextPropertyData = createCMTextPropertyData(textNode);
+        properties[CM_TEXT_PROPERTY_KEY] = createCMTextPropertyData(textNode);
         textAdded += 1;
         changed = true;
       }
       if (changed) writeCMContainer(textNode, container);
     }
-    figma.currentPage.selection = selection;
     return { total: textNodes.length, textAdded, varAdded, existing, conflicts };
+  }
+  function addImageControlPropertiesToNodes(imageNodes) {
+    let imageAdded = 0;
+    let varAdded = 0;
+    let existing = 0;
+    let conflicts = 0;
+    for (const imageNode of imageNodes) {
+      try {
+        const container = readCMContainer(imageNode);
+        const properties = container.PropertyDatas;
+        const hasVar = Boolean(properties[CM_VAR_PROPERTY_KEY]);
+        const hasImage = Boolean(properties[CM_IMAGE_PROPERTY_KEY]);
+        let changed = false;
+        if (hasVar) {
+          existing += 1;
+        } else {
+          properties[CM_VAR_PROPERTY_KEY] = {};
+          varAdded += 1;
+          changed = true;
+        }
+        if (hasImage) {
+          existing += 1;
+        } else {
+          properties[CM_IMAGE_PROPERTY_KEY] = createCMImagePropertyData();
+          imageAdded += 1;
+          changed = true;
+        }
+        if (changed) writeCMContainer(imageNode, container);
+      } catch (e) {
+        conflicts += 1;
+      }
+    }
+    return { total: imageNodes.length, imageAdded, varAdded, existing, conflicts };
   }
   function collectSelectedTextNodes(selection) {
     const map = /* @__PURE__ */ new Map();
@@ -927,6 +987,26 @@
         for (const child of node.findAll((candidate) => candidate.type === "TEXT")) {
           map.set(child.id, child);
         }
+      }
+    }
+    return Array.from(map.values());
+  }
+  function collectTextNodes(root) {
+    const map = /* @__PURE__ */ new Map();
+    if (root.type === "TEXT") map.set(root.id, root);
+    if ("findAll" in root) {
+      for (const child of root.findAll((candidate) => candidate.type === "TEXT")) {
+        map.set(child.id, child);
+      }
+    }
+    return Array.from(map.values());
+  }
+  function collectImageNodes(root) {
+    const map = /* @__PURE__ */ new Map();
+    if (getNodeKind(root) === "IMAGE") map.set(root.id, root);
+    if ("findAll" in root) {
+      for (const child of root.findAll((candidate) => getNodeKind(candidate) === "IMAGE")) {
+        map.set(child.id, child);
       }
     }
     return Array.from(map.values());

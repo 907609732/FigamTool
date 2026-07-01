@@ -400,7 +400,7 @@
         <div class="modal-card">
           <div class="panel-title-row">
             <h2>整理规则设置</h2>
-            <button class="help-btn" data-setting-help="整理规则设置" data-setting-description="这里是一键整理并命名画板专用的清理规则。当前第一版支持删除隐藏节点、删除 Mask、解散 Group，后续旧版 1000 整理项也会继续补到这里。">？</button>
+            <button class="help-btn" data-setting-help="整理规则设置" data-setting-description="这里是一键整理并命名画板专用规则。当前支持删除隐藏节点、删除 Mask、解散 Group，也可以选择在整理后自动给文本或图片挂项目插件识别的属性。">？</button>
           </div>
           <div class="grid">
             <div class="setting-field setting-check">
@@ -415,7 +415,15 @@
               <label class="check"><input id="autoNameRemoveMaskNodes" type="checkbox">删除 Mask</label>
               <button class="setting-help" data-setting-help="删除 Mask" data-setting-description="删除 isMask=true 的遮罩节点。如果关闭，遮罩节点会保留在画板里，但不会参与自动命名。" title="删除 isMask=true 的遮罩节点">？</button>
             </div>
-            <small>这是“一键整理并命名画板”的专用规则区。当前第一版先开放隐藏节点、Mask、Group 三项，后续旧版 1000 整理逻辑会继续补到这里。</small>
+            <div class="setting-field setting-check">
+              <label class="check"><input id="autoNameAddTextControlProperties" type="checkbox">挂文本加程序控制属性</label>
+              <button class="setting-help" data-setting-help="挂文本加程序控制属性" data-setting-description="整理画板完成后，递归给画板内所有 TEXT 文本节点写入 CMVarPropertyData 和 CMTextPropertyData，用于项目插件识别程序控制和文本属性。" title="给文本节点写入程序控制和文本属性">？</button>
+            </div>
+            <div class="setting-field setting-check">
+              <label class="check"><input id="autoNameAddImageControlProperties" type="checkbox">挂图片加程序控制属性</label>
+              <button class="setting-help" data-setting-help="挂图片加程序控制属性" data-setting-description="整理画板完成后，递归给画板内所有图片类节点写入 CMVarPropertyData 和 CMImagePropertyData，用于项目插件识别程序控制和图片属性。" title="给图片节点写入程序控制和图片属性">？</button>
+            </div>
+            <small>这是“一键整理并命名画板”的专用规则区。清理规则会先执行，文本/图片属性会在命名完成后按开关写入，后续旧版 1000 整理逻辑会继续补到这里。</small>
           </div>
           <button id="closeAutoNameFrameSettingsBtn">关闭</button>
         </div>
@@ -493,7 +501,13 @@
           templates: defaultTemplates(),
           aiSettings: { enabled: false, provider: "openai-compatible", providerKeys: {}, baseUrl: "https://api.openai.com/v1/chat/completions", apiKey: "", model: "gpt-4.1-mini", promptTemplate: "Name Figma UI nodes. Return JSON array with id and name." },
           translateSettings: { provider: "baidu", appId: "", secretKey: "", from: "zh", to: "en", autoFillFromSelection: true },
-          autoNameFrameSettings: { removeHiddenNodes: true, ungroupGroups: true, removeMaskNodes: true }
+          autoNameFrameSettings: {
+            removeHiddenNodes: true,
+            ungroupGroups: true,
+            removeMaskNodes: true,
+            addTextControlProperties: false,
+            addImageControlProperties: false
+          }
         };
       }
       function defaultTemplates() {
@@ -891,6 +905,8 @@
         config.autoNameFrameSettings.removeHiddenNodes = checked("autoNameRemoveHiddenNodes");
         config.autoNameFrameSettings.ungroupGroups = checked("autoNameUngroupGroups");
         config.autoNameFrameSettings.removeMaskNodes = checked("autoNameRemoveMaskNodes");
+        config.autoNameFrameSettings.addTextControlProperties = checked("autoNameAddTextControlProperties");
+        config.autoNameFrameSettings.addImageControlProperties = checked("autoNameAddImageControlProperties");
         save();
         if (!silent) status("整理规则设置已保存");
       }
@@ -1025,6 +1041,8 @@
         setChecked("autoNameRemoveHiddenNodes", config.autoNameFrameSettings.removeHiddenNodes);
         setChecked("autoNameUngroupGroups", config.autoNameFrameSettings.ungroupGroups);
         setChecked("autoNameRemoveMaskNodes", config.autoNameFrameSettings.removeMaskNodes);
+        setChecked("autoNameAddTextControlProperties", config.autoNameFrameSettings.addTextControlProperties);
+        setChecked("autoNameAddImageControlProperties", config.autoNameFrameSettings.addImageControlProperties);
         document.getElementById("autoNameFrameSettingsModal").hidden = false;
         bindHelpButtons(document.getElementById("autoNameFrameSettingsModal"));
       }
@@ -1168,7 +1186,7 @@
       document.getElementById("aiProvider").onchange = function() { applyAiPreset(value("aiProvider")); };
       ["aiEnabled","aiBaseUrl","aiModel","aiKey","aiPrompt"].forEach(function(id) { document.getElementById(id).onchange = syncAi; });
       ["baiduAppId","baiduSecretKey","baiduFrom","baiduTo","autoFillTranslateText"].forEach(function(id) { document.getElementById(id).onchange = syncTranslate; });
-      ["autoNameRemoveHiddenNodes","autoNameUngroupGroups","autoNameRemoveMaskNodes"].forEach(function(id) { document.getElementById(id).onchange = syncAutoNameFrameSettings; });
+      ["autoNameRemoveHiddenNodes","autoNameUngroupGroups","autoNameRemoveMaskNodes","autoNameAddTextControlProperties","autoNameAddImageControlProperties"].forEach(function(id) { document.getElementById(id).onchange = syncAutoNameFrameSettings; });
       var resizeFrame = 0;
       var pendingResize = null;
       function sendPendingResize() {

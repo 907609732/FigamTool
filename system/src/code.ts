@@ -19,6 +19,9 @@ import {
 const CONFIG_KEY = "ai-auto-namer-config";
 const PROJECT_CONFIG_NODE_NAME = ".AutoNamePluginConfig";
 const CM_PROPERTY_DATA_KEY = "CMPropertyDataContainer";
+const CM_VAR_PROPERTY_KEY = "CMVarPropertyData";
+const CM_TEXT_PROPERTY_KEY = "CMTextPropertyData";
+const CM_IMAGE_PROPERTY_KEY = "CMImagePropertyData";
 
 figma.showUI(__html__, { width: 560, height: 720, themeColors: true });
 
@@ -112,9 +115,14 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
 
     if (message.type === "AUTO_NAME_FRAME") {
       const result = await autoNameFrame(message.config);
+      const autoPropParts = [
+        result.textProps.total ? `文本属性 ${result.textProps.textAdded} 个` : "",
+        result.imageProps.total ? `图片属性 ${result.imageProps.imageAdded} 个` : "",
+        result.textProps.varAdded || result.imageProps.varAdded ? `程序控制 ${result.textProps.varAdded + result.imageProps.varAdded} 个` : ""
+      ].filter(Boolean);
       post({
         type: "APPLY_RESULT",
-        message: `一键命名完成：画板 ${result.frameName}，命名 ${result.renamed} 个，删除隐藏 ${result.removedHidden} 个，删除 Mask ${result.removedMasks} 个，解散 Group ${result.ungroupedGroups} 个，跳过 ${result.skipped} 个`
+        message: `一键命名完成：画板 ${result.frameName}，命名 ${result.renamed} 个，删除隐藏 ${result.removedHidden} 个，删除 Mask ${result.removedMasks} 个，解散 Group ${result.ungroupedGroups} 个${autoPropParts.length ? `，${autoPropParts.join("，")}` : ""}，跳过 ${result.skipped} 个`
       });
       figma.notify(`一键命名完成：${result.frameName}`);
       return;
@@ -627,7 +635,16 @@ function isChildrenContainer(node: BaseNode | null): node is BaseNode & Children
 
 async function autoNameFrame(
   config: PluginConfig
-): Promise<{ frameName: string; renamed: number; removedHidden: number; removedMasks: number; ungroupedGroups: number; skipped: number }> {
+): Promise<{
+  frameName: string;
+  renamed: number;
+  removedHidden: number;
+  removedMasks: number;
+  ungroupedGroups: number;
+  skipped: number;
+  textProps: TextControlPropertyResult;
+  imageProps: ImageControlPropertyResult;
+}> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
   if (selection.length !== 1 || selection[0].type !== "FRAME") {
@@ -668,6 +685,13 @@ async function autoNameFrame(
     }
   }
 
+  const textProps = normalized.autoNameFrameSettings.addTextControlProperties
+    ? addTextControlPropertiesToNodes(collectTextNodes(root))
+    : emptyTextControlPropertyResult();
+  const imageProps = normalized.autoNameFrameSettings.addImageControlProperties
+    ? addImageControlPropertiesToNodes(collectImageNodes(root))
+    : emptyImageControlPropertyResult();
+
   figma.currentPage.selection = [root];
   if (translationResult.warning) figma.notify(translationResult.warning);
   return {
@@ -676,7 +700,9 @@ async function autoNameFrame(
     removedHidden: cleanup.removedHidden,
     removedMasks: cleanup.removedMasks,
     ungroupedGroups: cleanup.ungroupedGroups,
-    skipped
+    skipped: skipped + textProps.conflicts + imageProps.conflicts,
+    textProps,
+    imageProps
   };
 }
 
@@ -716,13 +742,35 @@ function createCMTextPropertyData(node: TextNode) {
   };
 }
 
-async function addTextControlPropertiesToCurrentSelection(): Promise<{
+function createCMImagePropertyData() {
+  return {};
+}
+
+type TextControlPropertyResult = {
   total: number;
   textAdded: number;
   varAdded: number;
   existing: number;
   conflicts: number;
-}> {
+};
+
+type ImageControlPropertyResult = {
+  total: number;
+  imageAdded: number;
+  varAdded: number;
+  existing: number;
+  conflicts: number;
+};
+
+function emptyTextControlPropertyResult(): TextControlPropertyResult {
+  return { total: 0, textAdded: 0, varAdded: 0, existing: 0, conflicts: 0 };
+}
+
+function emptyImageControlPropertyResult(): ImageControlPropertyResult {
+  return { total: 0, imageAdded: 0, varAdded: 0, existing: 0, conflicts: 0 };
+}
+
+async function addTextControlPropertiesToCurrentSelection(): Promise<TextControlPropertyResult> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
   if (!selection.length) {
@@ -732,6 +780,12 @@ async function addTextControlPropertiesToCurrentSelection(): Promise<{
   if (!textNodes.length) {
     throw new Error("当前选中内容里没有可挂属性的文本节点");
   }
+  const result = addTextControlPropertiesToNodes(textNodes);
+  figma.currentPage.selection = selection;
+  return result;
+}
+
+function addTextControlPropertiesToNodes(textNodes: TextNode[]): TextControlPropertyResult {
   let textAdded = 0;
   let varAdded = 0;
   let existing = 0;
@@ -740,15 +794,15 @@ async function addTextControlPropertiesToCurrentSelection(): Promise<{
   for (const textNode of textNodes) {
     const container = readCMContainer(textNode);
     const properties = container.PropertyDatas;
-    const hasVar = Boolean(properties.CMVarPropertyData);
-    const hasText = Boolean(properties.CMTextPropertyData);
+    const hasVar = Boolean(properties[CM_VAR_PROPERTY_KEY]);
+    const hasText = Boolean(properties[CM_TEXT_PROPERTY_KEY]);
     const hasTextConflict = Boolean(properties.CMRichTextPropertyData || properties.CMRollingNumberPropertyData);
     let changed = false;
 
     if (hasVar) {
       existing += 1;
     } else {
-      properties.CMVarPropertyData = {};
+      properties[CM_VAR_PROPERTY_KEY] = {};
       varAdded += 1;
       changed = true;
     }
@@ -758,7 +812,7 @@ async function addTextControlPropertiesToCurrentSelection(): Promise<{
     } else if (hasText) {
       existing += 1;
     } else {
-      properties.CMTextPropertyData = createCMTextPropertyData(textNode);
+      properties[CM_TEXT_PROPERTY_KEY] = createCMTextPropertyData(textNode);
       textAdded += 1;
       changed = true;
     }
@@ -766,8 +820,46 @@ async function addTextControlPropertiesToCurrentSelection(): Promise<{
     if (changed) writeCMContainer(textNode, container);
   }
 
-  figma.currentPage.selection = selection;
   return { total: textNodes.length, textAdded, varAdded, existing, conflicts };
+}
+
+function addImageControlPropertiesToNodes(imageNodes: SceneNode[]): ImageControlPropertyResult {
+  let imageAdded = 0;
+  let varAdded = 0;
+  let existing = 0;
+  let conflicts = 0;
+
+  for (const imageNode of imageNodes) {
+    try {
+      const container = readCMContainer(imageNode);
+      const properties = container.PropertyDatas;
+      const hasVar = Boolean(properties[CM_VAR_PROPERTY_KEY]);
+      const hasImage = Boolean(properties[CM_IMAGE_PROPERTY_KEY]);
+      let changed = false;
+
+      if (hasVar) {
+        existing += 1;
+      } else {
+        properties[CM_VAR_PROPERTY_KEY] = {};
+        varAdded += 1;
+        changed = true;
+      }
+
+      if (hasImage) {
+        existing += 1;
+      } else {
+        properties[CM_IMAGE_PROPERTY_KEY] = createCMImagePropertyData();
+        imageAdded += 1;
+        changed = true;
+      }
+
+      if (changed) writeCMContainer(imageNode, container);
+    } catch {
+      conflicts += 1;
+    }
+  }
+
+  return { total: imageNodes.length, imageAdded, varAdded, existing, conflicts };
 }
 
 function collectSelectedTextNodes(selection: SceneNode[]): TextNode[] {
@@ -781,6 +873,28 @@ function collectSelectedTextNodes(selection: SceneNode[]): TextNode[] {
       for (const child of node.findAll((candidate) => candidate.type === "TEXT") as TextNode[]) {
         map.set(child.id, child);
       }
+    }
+  }
+  return Array.from(map.values());
+}
+
+function collectTextNodes(root: SceneNode): TextNode[] {
+  const map = new Map<string, TextNode>();
+  if (root.type === "TEXT") map.set(root.id, root);
+  if ("findAll" in root) {
+    for (const child of root.findAll((candidate) => candidate.type === "TEXT") as TextNode[]) {
+      map.set(child.id, child);
+    }
+  }
+  return Array.from(map.values());
+}
+
+function collectImageNodes(root: SceneNode): SceneNode[] {
+  const map = new Map<string, SceneNode>();
+  if (getNodeKind(root) === "IMAGE") map.set(root.id, root);
+  if ("findAll" in root) {
+    for (const child of root.findAll((candidate) => getNodeKind(candidate) === "IMAGE") as SceneNode[]) {
+      map.set(child.id, child);
     }
   }
   return Array.from(map.values());
