@@ -270,7 +270,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.42</span>
+            <span id="versionText">V0.1.43</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -657,7 +657,7 @@
               '</div>' +
             '</div>' +
             '<div class="quick-strip">' +
-              '<div class="panel-title-row"><h3>快捷属性</h3><div class="title-actions"><span>高频项直接改，细调再展开下面</span><button class="help-btn" data-setting-help="快捷属性" data-setting-description="这里保留最常用的几个快捷操作：字号按钮、常用颜色、一键归零 Position、一键居中 Constraints。它们修改的是当前属性方案，不是只改当前一个节点。">？</button></div></div>' +
+              '<div class="panel-title-row"><h3>快捷属性</h3><div class="title-actions"><span>高频项直接改，细调再展开下面</span><button class="help-btn" data-setting-help="快捷属性" data-setting-description="这里保留最常用的几个快捷操作：字号按钮、常用颜色、一键归零 Position、一键居中 Constraints。点击后会更新当前属性方案，并立即应用到当前选择范围。">？</button></div></div>' +
               '<div class="quick-row"><span class="muted">字号</span><button data-quick-font="28">28</button><button data-quick-font="32">32</button><button data-quick-font="48">48</button><span class="muted">颜色</span><button data-quick-color="FAFAFAFA">FAFAFAFA</button><span class="muted">Position</span><button id="positionZeroBtn">一键归零</button><span class="muted">Constraints</span><button id="constraintsCenterBtn">一键居中</button></div>' +
             '</div>' +
             '<div class="fold-stack">' +
@@ -708,23 +708,33 @@
         document.querySelectorAll("[data-preset-id]").forEach(function(btn) { btn.onclick = function() { config.activePropertyPresetId = btn.dataset.presetId; save(); renderTerms(); renderTermEditor(); }; });
         document.querySelectorAll("[data-prop-key]").forEach(function(input) { input.onchange = syncPropertyPreset; input.oninput = syncPropertyPreset; });
         document.querySelectorAll("[data-prop-enabled]").forEach(function(input) { input.onchange = syncPropertyPreset; });
-        document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { setValue("prop-fontSize", btn.dataset.quickFont); syncPropertyPreset(); }; });
-        document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { setValue("prop-textFill", btn.dataset.quickColor); syncPropertyPreset(); }; });
+        document.querySelectorAll("[data-quick-font]").forEach(function(btn) { btn.onclick = function() { enablePresetField("fontSize"); setValue("prop-fontSize", btn.dataset.quickFont); syncPropertyPreset(); applyActivePresetToSelection("正在应用字号快捷属性..."); }; });
+        document.querySelectorAll("[data-quick-color]").forEach(function(btn) { btn.onclick = function() { enablePresetField("textFill"); setValue("prop-textFill", btn.dataset.quickColor); syncPropertyPreset(); applyActivePresetToSelection("正在应用颜色快捷属性..."); }; });
         document.getElementById("positionZeroBtn").onclick = function() {
-          var enabledInput = document.querySelector('[data-prop-enabled="position"]');
-          if (enabledInput) enabledInput.checked = true;
+          enablePresetField("position");
           setValue("prop-positionX", "0");
           setValue("prop-positionY", "0");
           syncPropertyPreset();
+          applyActivePresetToSelection("正在把 Position 应用为 0,0...");
         };
         document.getElementById("constraintsCenterBtn").onclick = function() {
-          var enabledInput = document.querySelector('[data-prop-enabled="constraints"]');
-          if (enabledInput) enabledInput.checked = true;
+          enablePresetField("constraints");
           setValue("prop-constraintsHorizontal", "CENTER");
           setValue("prop-constraintsVertical", "CENTER");
           syncPropertyPreset();
+          applyActivePresetToSelection("正在把 Constraints 应用为居中...");
         };
         bindHelpButtons(document.getElementById("termEditor"));
+      }
+      function enablePresetField(key) {
+        var enabledInput = document.querySelector('[data-prop-enabled="' + key + '"]');
+        if (enabledInput) enabledInput.checked = true;
+      }
+      function applyActivePresetToSelection(message) {
+        var preset = activePreset();
+        if (!preset) return;
+        status(message || "正在应用当前属性方案...");
+        post({ type: "APPLY_PROPERTIES", preset: preset, options: renameOptions() });
       }
       function prop(key, label, type, value, enabled) {
         return '<div class="prop-line"><label class="check"><input data-prop-enabled="' + key + '" type="checkbox" ' + (enabled ? "checked" : "") + '>' + label + '</label><input id="prop-' + key + '" data-prop-key="' + key + '" type="' + type + '" value="' + esc(value) + '"></div>';
