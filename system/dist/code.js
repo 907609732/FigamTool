@@ -233,7 +233,7 @@
         id: "tpl-builtin-pc",
         source: "builtin",
         name: "\u5185\u7F6E PC\u753B\u677F",
-        description: "\u63D2\u4EF6\u5185\u7F6E 2560x1440 PC \u57FA\u7840\u753B\u677F\uFF0C\u4E0D\u4F9D\u8D56 Library\u3002",
+        description: "\u63D2\u4EF6\u5185\u7F6E 2560x1440 PC \u901A\u7528\u753B\u677F\u9AA8\u67B6\uFF0C\u5305\u542B Content\u3001Container\u3001CDNBGMaskColor \u548C\u9690\u85CF TestFrame\u3002",
         componentKey: "",
         platform: "PC",
         detachAfterInsert: true
@@ -850,7 +850,8 @@
     return instance;
   }
   async function insertBuiltinTemplate(template) {
-    const size = template.platform === "IOS" ? { width: 2340, height: 1080 } : template.platform === "PC" ? { width: 2560, height: 1440 } : { width: 1200, height: 720 };
+    if (template.platform === "PC") return insertBuiltinPcTemplate();
+    const size = template.platform === "IOS" ? { width: 2340, height: 1080 } : { width: 1200, height: 720 };
     const frame = figma.createFrame();
     frame.resize(size.width, size.height);
     frame.fills = [hexToSolidPaint("#1E1E1E")];
@@ -878,6 +879,58 @@
     title.x = 64;
     title.y = 56;
     content.appendChild(title);
+    figma.currentPage.appendChild(frame);
+    return frame;
+  }
+  function insertBuiltinPcTemplate() {
+    const frame = figma.createFrame();
+    frame.name = "PC";
+    frame.resize(2560, 1440);
+    frame.fills = [hexToSolidPaint("#888888")];
+    frame.clipsContent = true;
+    const mask = figma.createRectangle();
+    mask.name = "CDNBGMaskColor";
+    mask.resize(2560, 1440);
+    mask.fills = [__spreadProps(__spreadValues({}, hexToSolidPaint("#000000")), { opacity: 0.18 })];
+    frame.appendChild(mask);
+    const container = figma.createFrame();
+    container.name = "Container";
+    container.resize(2560, 1440);
+    container.fills = [];
+    container.clipsContent = true;
+    frame.appendChild(container);
+    const bg = figma.createRectangle();
+    bg.name = "Bg";
+    bg.resize(2560, 1440);
+    bg.fills = [hexToSolidPaint("#1E2631")];
+    container.appendChild(bg);
+    const leftShade = figma.createRectangle();
+    leftShade.name = "BgLeftShade";
+    leftShade.resize(980, 1440);
+    leftShade.fills = [__spreadProps(__spreadValues({}, hexToSolidPaint("#000000")), { opacity: 0.28 })];
+    container.appendChild(leftShade);
+    const panel = figma.createFrame();
+    panel.name = "ContentPanel";
+    panel.resize(760, 900);
+    panel.x = 1680;
+    panel.y = 210;
+    panel.fills = [__spreadProps(__spreadValues({}, hexToSolidPaint("#102034")), { opacity: 0.72 })];
+    panel.cornerRadius = 12;
+    panel.clipsContent = true;
+    container.appendChild(panel);
+    const content = figma.createFrame();
+    content.name = "Content";
+    content.resize(2560, 1440);
+    content.fills = [];
+    content.clipsContent = true;
+    frame.appendChild(content);
+    const guide = figma.createFrame();
+    guide.name = "TestFrame";
+    guide.resize(2560, 1440);
+    guide.fills = [];
+    guide.locked = true;
+    guide.visible = false;
+    frame.appendChild(guide);
     figma.currentPage.appendChild(frame);
     return frame;
   }

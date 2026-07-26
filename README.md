@@ -242,7 +242,7 @@ Style 规则：
 
 - `Library PC画板`：需要在设置里填写 Component Key，默认插入后打散。
 - `Library IOS画板`：需要在设置里填写 Component Key，默认插入后打散。
-- `内置 PC画板`：直接创建 `2560 x 1440` 的基础画板。
+- `内置 PC画板`：直接创建 `2560 x 1440` 的 PC 通用画板骨架，内含 `Content`、`Container`、`CDNBGMaskColor` 和隐藏锁定的 `TestFrame`。
 - `内置 IOS画板`：直接创建 `2340 x 1080` 的基础画板。
 
 模板页右上角的 `模板设置` 按钮用于配置 Library Component Key、模板来源、平台和插入后是否打散。配置界面内可以点击 `返回模板` 回到按钮列表。

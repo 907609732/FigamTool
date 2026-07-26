@@ -375,7 +375,7 @@ export const defaultConfig: PluginConfig = {
       id: "tpl-builtin-pc",
       source: "builtin",
       name: "内置 PC画板",
-      description: "插件内置 2560x1440 PC 基础画板，不依赖 Library。",
+      description: "插件内置 2560x1440 PC 通用画板骨架，包含 Content、Container、CDNBGMaskColor 和隐藏 TestFrame。",
       componentKey: "",
       platform: "PC",
       detachAfterInsert: true
