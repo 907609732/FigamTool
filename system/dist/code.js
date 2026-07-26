@@ -815,7 +815,7 @@
     const stateIndex = variantOrderIndex(["Normal", "Hover", "Pressed", "Disabled"], definition.State);
     const checkedIndex = variantOrderIndex(["Unchecked", "Checked"], definition.Checked);
     const styleIndex = variantOrderIndex(["Normal", "Complete", "1st", "2nd", "3rd"], definition.Style);
-    return stateIndex * 100 + checkedIndex * 10 + styleIndex;
+    return checkedIndex * 100 + styleIndex * 10 + stateIndex;
   }
   function variantOrderIndex(order, value) {
     if (!value) return 0;
