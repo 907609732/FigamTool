@@ -682,7 +682,7 @@
           clones.push(component);
         }
         component.name = variantComponentName(definitions[index]);
-        positionVariant(component, index, definitions.length, originalX, originalY, source.width, source.height);
+        positionVariant(component, index, definitions, originalX, originalY, source.width, source.height);
         components.push(component);
       }
       const componentSet = figma.combineAsVariants(components, parent, parentIndex);
@@ -719,13 +719,9 @@
             clones.push(target);
           }
           target.name = variantComponentName(__spreadProps(__spreadValues({}, baseDefinition), { Style: styleValues[styleIndex] }));
-          try {
-            target.x = original.x + styleIndex * (original.width + 20);
-            target.y = original.y;
-          } catch (e) {
-          }
         }
       }
+      arrangeVariantSet(componentSet);
       return { count: originals.length * styleValues.length };
     } catch (error) {
       for (const clone of clones) {
@@ -763,16 +759,11 @@
   function baseVariantDefinitions(mode) {
     if (mode === "style-only") return [{}];
     if (mode === "six" || mode === "eight") {
-      return [
-        { State: "Normal", Checked: "Unchecked" },
-        { State: "Hover", Checked: "Unchecked" },
-        { State: "Pressed", Checked: "Unchecked" },
-        ...mode === "eight" ? [{ State: "Disabled", Checked: "Unchecked" }] : [],
-        { State: "Normal", Checked: "Checked" },
-        { State: "Hover", Checked: "Checked" },
-        { State: "Pressed", Checked: "Checked" },
-        ...mode === "eight" ? [{ State: "Disabled", Checked: "Checked" }] : []
-      ];
+      const states = mode === "eight" ? ["Normal", "Hover", "Pressed", "Disabled"] : ["Normal", "Hover", "Pressed"];
+      return states.flatMap((state) => [
+        { State: state, Checked: "Unchecked" },
+        { State: state, Checked: "Checked" }
+      ]);
     }
     return [
       { State: "Normal" },
@@ -791,13 +782,45 @@
     const parts = orderedKeys.filter((key) => definition[key]).map((key) => `${key}=${definition[key]}`);
     return parts.join(", ") || "Style=Normal";
   }
-  function positionVariant(component, index, total, x, y, width, height) {
+  function positionVariant(component, index, definitions, x, y, width, height) {
     try {
-      const columns = total === 8 ? 4 : total === 6 ? 3 : total <= 4 ? 1 : Math.ceil(Math.sqrt(total));
+      const columns = variantColumns(definitions);
       component.x = x + index % columns * (width + 20);
       component.y = y + Math.floor(index / columns) * (height + 40);
     } catch (e) {
     }
+  }
+  function arrangeVariantSet(componentSet) {
+    const children = Array.from(componentSet.children).filter((child) => child.type === "COMPONENT");
+    if (!children.length) return;
+    const definitions = children.map((child) => variantDefinitionFromComponent(child));
+    const sorted = children.map((child, index) => ({ child, definition: definitions[index] })).sort((a, b) => variantSortValue(a.definition) - variantSortValue(b.definition));
+    const originX = Math.min(...children.map((child) => child.x));
+    const originY = Math.min(...children.map((child) => child.y));
+    const width = children[0].width;
+    const height = children[0].height;
+    const sortedDefinitions = sorted.map((entry) => entry.definition);
+    sorted.forEach((entry, index) => {
+      positionVariant(entry.child, index, sortedDefinitions, originX, originY, width, height);
+    });
+  }
+  function variantColumns(definitions) {
+    const stateCount = uniqueVariantValues(definitions, "State").length || 1;
+    return Math.max(1, Math.ceil(definitions.length / stateCount));
+  }
+  function variantSortValue(definition) {
+    const stateIndex = variantOrderIndex(["Normal", "Hover", "Pressed", "Disabled"], definition.State);
+    const checkedIndex = variantOrderIndex(["Unchecked", "Checked"], definition.Checked);
+    const styleIndex = variantOrderIndex(["Normal", "Complete", "1st", "2nd", "3rd"], definition.Style);
+    return stateIndex * 100 + checkedIndex * 10 + styleIndex;
+  }
+  function variantOrderIndex(order, value) {
+    if (!value) return 0;
+    const index = order.indexOf(value);
+    return index >= 0 ? index : order.length;
+  }
+  function uniqueVariantValues(definitions, key) {
+    return Array.from(new Set(definitions.map((definition) => definition[key]).filter((value) => Boolean(value))));
   }
   async function insertTemplate(templateId, config) {
     await ensureCurrentPageLoaded();
