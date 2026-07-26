@@ -488,6 +488,7 @@ async function createVariants(
 
     const componentSet = figma.combineAsVariants(components, parent, parentIndex);
     componentSet.name = originalName;
+    arrangeVariantSet(componentSet);
     figma.currentPage.selection = [componentSet];
     figma.viewport.scrollAndZoomIntoView([componentSet]);
     return { count: definitions.length, name: componentSet.name, convertedFrame, appendedStyle: false };
@@ -540,9 +541,10 @@ function componentSetHasStyle(componentSet: ComponentSetNode): boolean {
 }
 
 function variantDefinitionFromComponent(component: ComponentNode): VariantDefinition {
+  const parsed = parseVariantName(component.name);
   const properties = component.variantProperties;
-  if (properties) return { ...properties };
-  return parseVariantName(component.name);
+  if (properties) return { ...properties, ...parsed };
+  return parsed;
 }
 
 function parseVariantName(name: string): VariantDefinition {
@@ -626,6 +628,7 @@ function arrangeVariantSet(componentSet: ComponentSetNode) {
   const height = children[0].height;
   const sortedDefinitions = sorted.map((entry) => entry.definition);
   sorted.forEach((entry, index) => {
+    componentSet.insertChild(index, entry.child);
     positionVariant(entry.child, index, sortedDefinitions, originX, originY, width, height);
   });
 }

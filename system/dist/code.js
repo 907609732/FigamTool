@@ -687,6 +687,7 @@
       }
       const componentSet = figma.combineAsVariants(components, parent, parentIndex);
       componentSet.name = originalName;
+      arrangeVariantSet(componentSet);
       figma.currentPage.selection = [componentSet];
       figma.viewport.scrollAndZoomIntoView([componentSet]);
       return { count: definitions.length, name: componentSet.name, convertedFrame, appendedStyle: false };
@@ -735,9 +736,10 @@
     return componentSet.children.some((child) => child.type === "COMPONENT" && Boolean(variantDefinitionFromComponent(child).Style));
   }
   function variantDefinitionFromComponent(component) {
+    const parsed = parseVariantName(component.name);
     const properties = component.variantProperties;
-    if (properties) return __spreadValues({}, properties);
-    return parseVariantName(component.name);
+    if (properties) return __spreadValues(__spreadValues({}, properties), parsed);
+    return parsed;
   }
   function parseVariantName(name) {
     const definition = {};
@@ -801,6 +803,7 @@
     const height = children[0].height;
     const sortedDefinitions = sorted.map((entry) => entry.definition);
     sorted.forEach((entry, index) => {
+      componentSet.insertChild(index, entry.child);
       positionVariant(entry.child, index, sortedDefinitions, originX, originY, width, height);
     });
   }
