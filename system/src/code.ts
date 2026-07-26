@@ -685,7 +685,8 @@ async function insertLibraryTemplate(template: TemplateEntry): Promise<SceneNode
   return instance;
 }
 
-async function insertBuiltinTemplate(template: TemplateEntry): Promise<FrameNode> {
+async function insertBuiltinTemplate(template: TemplateEntry): Promise<SceneNode> {
+  if (template.platform === "PC" && template.componentKey.trim()) return insertLibraryTemplate(template);
   if (template.platform === "PC") return insertBuiltinPcTemplate();
 
   const size = template.platform === "IOS"

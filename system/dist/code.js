@@ -233,7 +233,7 @@
         id: "tpl-builtin-pc",
         source: "builtin",
         name: "\u5185\u7F6E PC\u753B\u677F",
-        description: "\u63D2\u4EF6\u5185\u7F6E 2560x1440 PC \u901A\u7528\u753B\u677F\u9AA8\u67B6\uFF0C\u5305\u542B Content\u3001Container\u3001CDNBGMaskColor \u548C\u9690\u85CF TestFrame\u3002",
+        description: "\u53EF\u586B\u5199 Component Key \u4EE5\u9AD8\u4FDD\u771F\u5BFC\u5165 PC \u753B\u677F\uFF1B\u672A\u586B\u5199\u65F6\u521B\u5EFA 2560x1440 PC \u901A\u7528\u753B\u677F\u9AA8\u67B6\u3002",
         componentKey: "",
         platform: "PC",
         detachAfterInsert: true
@@ -850,6 +850,7 @@
     return instance;
   }
   async function insertBuiltinTemplate(template) {
+    if (template.platform === "PC" && template.componentKey.trim()) return insertLibraryTemplate(template);
     if (template.platform === "PC") return insertBuiltinPcTemplate();
     const size = template.platform === "IOS" ? { width: 2340, height: 1080 } : { width: 1200, height: 720 };
     const frame = figma.createFrame();

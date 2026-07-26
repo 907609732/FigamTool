@@ -221,12 +221,12 @@
           <div class="panel-title-row">
             <h2>模板</h2>
             <div class="title-actions">
-              <button class="help-btn" data-setting-help="模板" data-setting-description="模板页支持两种方式：Library 模板会从你配置好的组件库导入通用画板；内置模板会直接生成基础 PC 或 IOS 画板。可以先都试用，再决定保留哪种工作流。" title="查看模板说明">？</button>
+              <button class="help-btn" data-setting-help="模板" data-setting-description="模板页支持两种方式：Library 模板会从你配置好的组件库导入通用画板；内置 PC 画板也可以填写 Component Key，高保真保留图片和全部属性，没填 Key 时才生成代码内置骨架。" title="查看模板说明">？</button>
               <button id="templateSettingsBtn" title="配置 Library Component Key 和插入后是否打散">模板设置</button>
             </div>
           </div>
           <div class="template-grid" id="templateButtons"></div>
-          <small>Library 模板需要先在设置里填写 Component Key；内置模板不需要任何配置，可直接插入基础 PC/IOS 画板。</small>
+          <small>Library 模板需要先填写 Component Key；内置 PC 画板也可填写 Key 来高保真保留图片和属性，未填写时使用代码骨架兜底。</small>
         </div>
         <div id="templateSettingsView" class="panel grid" hidden>
           <div class="panel-title-row">
@@ -290,7 +290,7 @@
         <h2>软件信息</h2>
         <div class="panel settings-card">
           <div class="meta">
-            <span id="versionText">V0.1.51</span>
+            <span id="versionText">V0.1.52</span>
             <span>By五成</span>
             <a id="lexiconLink" href="https://github.com/907609732/FigamTool" target="_blank" rel="noopener noreferrer">词库链接</a>
           </div>
@@ -521,7 +521,7 @@
         return [
           { id: "tpl-library-pc", source: "library", name: "Library PC画板", description: "从已发布 Library 组件导入 PC 通用画板，默认插入后打散成可编辑节点。", componentKey: "", platform: "PC", detachAfterInsert: true },
           { id: "tpl-library-ios", source: "library", name: "Library IOS画板", description: "从已发布 Library 组件导入 IOS 通用画板，默认插入后打散成可编辑节点。", componentKey: "", platform: "IOS", detachAfterInsert: true },
-          { id: "tpl-builtin-pc", source: "builtin", name: "内置 PC画板", description: "插件内置 2560x1440 PC 通用画板骨架，包含 Content、Container、CDNBGMaskColor 和隐藏 TestFrame。", componentKey: "", platform: "PC", detachAfterInsert: true },
+          { id: "tpl-builtin-pc", source: "builtin", name: "内置 PC画板", description: "可填写 Component Key 以高保真导入 PC 画板；未填写时创建 2560x1440 PC 通用画板骨架。", componentKey: "", platform: "PC", detachAfterInsert: true },
           { id: "tpl-builtin-ios", source: "builtin", name: "内置 IOS画板", description: "插件内置 2340x1080 IOS 基础画板，不依赖 Library。", componentKey: "", platform: "IOS", detachAfterInsert: true }
         ];
       }
@@ -871,7 +871,7 @@
               '<label>按钮名<input data-template-field="name" value="' + esc(template.name) + '"></label>' +
               '<label>来源<select data-template-field="source"><option value="library" ' + (template.source === "library" ? "selected" : "") + '>Library</option><option value="builtin" ' + (template.source === "builtin" ? "selected" : "") + '>内置</option></select></label>' +
               '<label>平台<select data-template-field="platform"><option value="PC" ' + (template.platform === "PC" ? "selected" : "") + '>PC</option><option value="IOS" ' + (template.platform === "IOS" ? "selected" : "") + '>IOS</option><option value="Item" ' + (template.platform === "Item" ? "selected" : "") + '>Item</option><option value="None" ' + (template.platform === "None" ? "selected" : "") + '>None</option></select></label>' +
-              '<label>Component Key<input data-template-field="componentKey" value="' + esc(template.componentKey) + '" placeholder="Library 模板填写"></label>' +
+              '<label>Component Key<input data-template-field="componentKey" value="' + esc(template.componentKey) + '" placeholder="Library 或内置 PC 高保真模板填写"></label>' +
             '</div>' +
             '<label>说明<input data-template-field="description" value="' + esc(template.description) + '"></label>' +
             '<label class="check"><input data-template-field="detachAfterInsert" type="checkbox" ' + (template.detachAfterInsert ? "checked" : "") + '>插入后打散成可编辑节点</label>' +
