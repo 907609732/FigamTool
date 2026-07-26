@@ -69,12 +69,10 @@
       .button-help-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
       .button-help-row.with-settings { grid-template-columns: minmax(0, 1fr) 32px 32px; }
       .button-help-row > button:first-child { min-width: 0; }
-      .variant-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .variant-buttons button { display: grid; gap: 3px; min-height: 58px; padding: 7px 8px; line-height: 14px; text-align: left; }
-      .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .variant-buttons strong { font-size: 13px; }
-      .variant-buttons small { color: rgba(255, 255, 255, .86); font-size: 10px; }
-      .variant-buttons button:not(.active) small { color: var(--figma-color-text-secondary, #777); }
+      .variant-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .variant-buttons button { width: auto; min-width: 64px; max-width: 128px; min-height: 30px; padding: 4px 9px; line-height: 14px; text-align: center; border-radius: 6px; }
+      .variant-buttons strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+      .variant-buttons small { display: none; }
       .variant-buttons button.active { border-color: var(--figma-color-border-brand, #0d99ff); background: var(--figma-color-bg-brand, #0d99ff); color: var(--figma-color-text-onbrand, #fff); }
       .variant-summary { color: var(--figma-color-text-secondary, #777); font-size: 11px; }
       .template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -262,10 +260,10 @@
             <h3>基础状态</h3>
             <div class="variant-buttons">
               <button data-variant-base="style-only" title="仅生成 Style 属性，不添加 State 或 Checked"><strong>仅 Style</strong><small>只生成 Style 维度</small></button>
-              <button data-variant-base="three" title="跳转按钮：State=Normal、Hover、Pressed"><strong>跳转按钮 · 3状态</strong><small>Normal / Hover / Pressed</small></button>
-              <button data-variant-base="four" title="跳转按钮带禁用态：State=Normal、Hover、Pressed、Disabled"><strong>跳转按钮带禁用态 · 4状态</strong><small>Normal / Hover / Pressed / Disabled</small></button>
-              <button data-variant-base="six" title="选择按钮：Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>选择按钮 · 6状态</strong><small>Unchecked + Checked，各 3 状态</small></button>
-              <button data-variant-base="eight" title="选择按钮带禁用态：Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>选择按钮带禁用态 · 8状态</strong><small>Unchecked + Checked，各 4 状态</small></button>
+              <button data-variant-base="three" title="跳转按钮：State=Normal、Hover、Pressed"><strong>跳转 3</strong><small>Normal / Hover / Pressed</small></button>
+              <button data-variant-base="four" title="跳转按钮带禁用态：State=Normal、Hover、Pressed、Disabled"><strong>跳转禁用 4</strong><small>Normal / Hover / Pressed / Disabled</small></button>
+              <button data-variant-base="six" title="选择按钮：Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>选择 6</strong><small>Unchecked + Checked，各 3 状态</small></button>
+              <button data-variant-base="eight" title="选择按钮带禁用态：Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>选择禁用 8</strong><small>Unchecked + Checked，各 4 状态</small></button>
             </div>
             <h3>附加 Style</h3>
             <div class="variant-buttons">
