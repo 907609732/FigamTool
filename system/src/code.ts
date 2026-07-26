@@ -13,7 +13,9 @@ import {
   type TemplateEntry,
   type TranslateSettings,
   type UiToPluginMessage,
-  type VariantMode
+  type VariantBaseMode,
+  type VariantMode,
+  type VariantStyleMode
 } from "./shared";
 
 const CONFIG_KEY = "ai-auto-namer-config";
@@ -137,8 +139,8 @@ figma.ui.onmessage = async (message: UiToPluginMessage) => {
     }
 
     if (message.type === "CREATE_VARIANTS") {
-      const result = await createVariants(message.mode);
-      const prefix = result.convertedFrame ? "已将 Frame 转为 Component，并" : "";
+      const result = await createVariants(message.baseMode ?? message.mode ?? "three", message.styleMode ?? "none");
+      const prefix = result.appendedStyle ? "已追加 Style，并" : result.convertedFrame ? "已将 Frame 转为 Component，并" : "";
       post({ type: "APPLY_RESULT", message: `${prefix}制作 ${result.count} 个变体：${result.name}` });
       figma.notify(`${prefix}制作 ${result.count} 个变体`);
       return;
@@ -436,14 +438,26 @@ async function translateAndRename(
   return { renamed, name: baseName };
 }
 
-async function createVariants(mode: VariantMode): Promise<{ count: number; name: string; convertedFrame: boolean }> {
+type VariantDefinition = Partial<Record<"State" | "Checked" | "Style", string>>;
+
+async function createVariants(
+  baseMode: VariantBaseMode,
+  styleMode: VariantStyleMode
+): Promise<{ count: number; name: string; convertedFrame: boolean; appendedStyle: boolean }> {
   await ensureCurrentPageLoaded();
   const selection = Array.from(figma.currentPage.selection);
-  if (selection.length !== 1 || (selection[0].type !== "COMPONENT" && selection[0].type !== "FRAME")) {
-    throw new Error("请只选中一个独立的 Frame 或尚未加入变体集的主组件（Component）");
+  if (selection.length !== 1 || (selection[0].type !== "COMPONENT" && selection[0].type !== "FRAME" && selection[0].type !== "COMPONENT_SET")) {
+    throw new Error("请只选中一个独立 Frame、主组件，或已有变体集");
   }
 
   const selected = selection[0];
+  if (selected.type === "COMPONENT_SET") {
+    const result = appendStyleVariants(selected, styleMode);
+    figma.currentPage.selection = [selected];
+    figma.viewport.scrollAndZoomIntoView([selected]);
+    return { count: result.count, name: selected.name, convertedFrame: false, appendedStyle: true };
+  }
+
   const convertedFrame = selected.type === "FRAME";
   const source: ComponentNode = selected.type === "FRAME" ? figma.createComponentFromNode(selected) : selected;
   if (source.parent?.type === "COMPONENT_SET") {
@@ -456,7 +470,7 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
   const originalX = source.x;
   const originalY = source.y;
   const parentIndex = parent.children.indexOf(source);
-  const definitions = variantDefinitions(mode);
+  const definitions = variantDefinitions(baseMode, styleMode);
   const components: ComponentNode[] = [];
   const clones: ComponentNode[] = [];
 
@@ -468,7 +482,7 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
         clones.push(component);
       }
       component.name = variantComponentName(definitions[index]);
-      positionVariant(component, index, mode, originalX, originalY, source.width, source.height);
+      positionVariant(component, index, definitions.length, originalX, originalY, source.width, source.height);
       components.push(component);
     }
 
@@ -476,7 +490,7 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
     componentSet.name = originalName;
     figma.currentPage.selection = [componentSet];
     figma.viewport.scrollAndZoomIntoView([componentSet]);
-    return { count: definitions.length, name: componentSet.name, convertedFrame };
+    return { count: definitions.length, name: componentSet.name, convertedFrame, appendedStyle: false };
   } catch (error) {
     source.name = originalName;
     for (const clone of clones) {
@@ -486,7 +500,77 @@ async function createVariants(mode: VariantMode): Promise<{ count: number; name:
   }
 }
 
-function variantDefinitions(mode: VariantMode): Array<{ State: string; Checked?: string }> {
+function appendStyleVariants(componentSet: ComponentSetNode, styleMode: VariantStyleMode): { count: number } {
+  const styleValues = variantStyleValues(styleMode);
+  if (!styleValues.length) {
+    throw new Error("请选择一个附加 Style 模式后，再对已有变体集追加 Style");
+  }
+  if (componentSetHasStyle(componentSet)) {
+    throw new Error("当前变体集已经有 Style 属性，请先选择没有 Style 的变体集");
+  }
+
+  const originals = Array.from(componentSet.children).filter((child): child is ComponentNode => child.type === "COMPONENT");
+  const clones: ComponentNode[] = [];
+  try {
+    for (let baseIndex = 0; baseIndex < originals.length; baseIndex += 1) {
+      const original = originals[baseIndex];
+      const baseDefinition = variantDefinitionFromComponent(original);
+      for (let styleIndex = 0; styleIndex < styleValues.length; styleIndex += 1) {
+        const target = styleIndex === 0 ? original : original.clone();
+        if (styleIndex > 0) {
+          componentSet.appendChild(target);
+          clones.push(target);
+        }
+        target.name = variantComponentName({ ...baseDefinition, Style: styleValues[styleIndex] });
+        try {
+          target.x = original.x + styleIndex * (original.width + 20);
+          target.y = original.y;
+        } catch {
+          // Auto-layout parents decide positioning; the variant data is still valid.
+        }
+      }
+    }
+    return { count: originals.length * styleValues.length };
+  } catch (error) {
+    for (const clone of clones) {
+      if (!clone.removed) clone.remove();
+    }
+    throw new Error(`追加 Style 变体失败：${errorMessage(error)}`);
+  }
+}
+
+function componentSetHasStyle(componentSet: ComponentSetNode): boolean {
+  if (Object.prototype.hasOwnProperty.call(componentSet.componentPropertyDefinitions, "Style")) return true;
+  return componentSet.children.some((child) => child.type === "COMPONENT" && Boolean(variantDefinitionFromComponent(child).Style));
+}
+
+function variantDefinitionFromComponent(component: ComponentNode): VariantDefinition {
+  const properties = component.variantProperties;
+  if (properties) return { ...properties };
+  return parseVariantName(component.name);
+}
+
+function parseVariantName(name: string): VariantDefinition {
+  const definition: VariantDefinition = {};
+  for (const part of name.split(",")) {
+    const pieces = part.split("=");
+    if (pieces.length < 2) continue;
+    const key = pieces[0].trim();
+    const value = pieces.slice(1).join("=").trim();
+    if (key === "State" || key === "Checked" || key === "Style") definition[key] = value;
+  }
+  return definition;
+}
+
+function variantDefinitions(mode: VariantBaseMode, styleMode: VariantStyleMode): VariantDefinition[] {
+  const baseDefinitions = baseVariantDefinitions(mode);
+  const styleValues = variantStyleValues(styleMode);
+  if (!styleValues.length) return baseDefinitions;
+  return baseDefinitions.flatMap((definition) => styleValues.map((style) => ({ ...definition, Style: style })));
+}
+
+function baseVariantDefinitions(mode: VariantBaseMode): VariantDefinition[] {
+  if (mode === "style-only") return [{}];
   if (mode === "six" || mode === "eight") {
     return [
       { State: "Normal", Checked: "Unchecked" },
@@ -507,30 +591,33 @@ function variantDefinitions(mode: VariantMode): Array<{ State: string; Checked?:
   ];
 }
 
-function variantComponentName(definition: { State: string; Checked?: string }): string {
-  return definition.Checked
-    ? `State=${definition.State}, Checked=${definition.Checked}`
-    : `State=${definition.State}`;
+function variantStyleValues(styleMode: VariantStyleMode): string[] {
+  if (styleMode === "complete") return ["Normal", "Complete"];
+  if (styleMode === "rank") return ["1st", "2nd", "3rd"];
+  return [];
+}
+
+function variantComponentName(definition: VariantDefinition): string {
+  const orderedKeys: Array<keyof VariantDefinition> = ["State", "Checked", "Style"];
+  const parts = orderedKeys
+    .filter((key) => definition[key])
+    .map((key) => `${key}=${definition[key]}`);
+  return parts.join(", ") || "Style=Normal";
 }
 
 function positionVariant(
   component: ComponentNode,
   index: number,
-  mode: VariantMode,
+  total: number,
   x: number,
   y: number,
   width: number,
   height: number
 ) {
   try {
-    if (mode === "six" || mode === "eight") {
-      const columns = mode === "eight" ? 4 : 3;
-      component.x = x + (index % columns) * (width + 20);
-      component.y = y + Math.floor(index / columns) * (height + 40);
-    } else {
-      component.x = x;
-      component.y = y + index * (height + 20);
-    }
+  const columns = total === 8 ? 4 : total === 6 ? 3 : total <= 4 ? 1 : Math.ceil(Math.sqrt(total));
+    component.x = x + (index % columns) * (width + 20);
+    component.y = y + Math.floor(index / columns) * (height + 40);
   } catch {
     // Auto-layout parents decide positioning; combineAsVariants can still create the set.
   }

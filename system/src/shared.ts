@@ -1,6 +1,8 @@
 export type NodeKind = "TEXT" | "IMAGE" | "COMPONENT" | "FRAME" | "SHAPE" | "NODE";
 export type RenameScope = "selection" | "children" | "deep";
 export type VariantMode = "three" | "four" | "six" | "eight";
+export type VariantBaseMode = "style-only" | VariantMode;
+export type VariantStyleMode = "none" | "complete" | "rank";
 export type TemplateSource = "library" | "builtin";
 export type TemplatePlatform = "PC" | "IOS" | "Item" | "None";
 
@@ -157,7 +159,7 @@ export type UiToPluginMessage =
   | { type: "TRANSLATE_AND_RENAME"; text: string; options: RenameOptions; config: PluginConfig; addTextControlProperties?: boolean }
   | { type: "AUTO_NAME_FRAME"; config: PluginConfig }
   | { type: "ADD_TEXT_CONTROL_PROPERTIES" }
-  | { type: "CREATE_VARIANTS"; mode: VariantMode }
+  | { type: "CREATE_VARIANTS"; mode?: VariantMode; baseMode?: VariantBaseMode; styleMode?: VariantStyleMode }
   | { type: "INSERT_TEMPLATE"; templateId: string; config: PluginConfig }
   | { type: "RESIZE_UI"; width: number; height: number };
 

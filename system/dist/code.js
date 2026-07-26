@@ -294,6 +294,7 @@
     }
   });
   figma.ui.onmessage = async (message) => {
+    var _a, _b, _c;
     try {
       if (message.type === "SCAN_SELECTION") {
         post({ type: "SELECTION", selection: await getSelectionSummary() });
@@ -382,8 +383,8 @@
         return;
       }
       if (message.type === "CREATE_VARIANTS") {
-        const result = await createVariants(message.mode);
-        const prefix = result.convertedFrame ? "\u5DF2\u5C06 Frame \u8F6C\u4E3A Component\uFF0C\u5E76" : "";
+        const result = await createVariants((_b = (_a = message.baseMode) != null ? _a : message.mode) != null ? _b : "three", (_c = message.styleMode) != null ? _c : "none");
+        const prefix = result.appendedStyle ? "\u5DF2\u8FFD\u52A0 Style\uFF0C\u5E76" : result.convertedFrame ? "\u5DF2\u5C06 Frame \u8F6C\u4E3A Component\uFF0C\u5E76" : "";
         post({ type: "APPLY_RESULT", message: `${prefix}\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53\uFF1A${result.name}` });
         figma.notify(`${prefix}\u5236\u4F5C ${result.count} \u4E2A\u53D8\u4F53`);
         return;
@@ -645,14 +646,20 @@
     }
     return { renamed, name: baseName };
   }
-  async function createVariants(mode) {
+  async function createVariants(baseMode, styleMode) {
     var _a;
     await ensureCurrentPageLoaded();
     const selection = Array.from(figma.currentPage.selection);
-    if (selection.length !== 1 || selection[0].type !== "COMPONENT" && selection[0].type !== "FRAME") {
-      throw new Error("\u8BF7\u53EA\u9009\u4E2D\u4E00\u4E2A\u72EC\u7ACB\u7684 Frame \u6216\u5C1A\u672A\u52A0\u5165\u53D8\u4F53\u96C6\u7684\u4E3B\u7EC4\u4EF6\uFF08Component\uFF09");
+    if (selection.length !== 1 || selection[0].type !== "COMPONENT" && selection[0].type !== "FRAME" && selection[0].type !== "COMPONENT_SET") {
+      throw new Error("\u8BF7\u53EA\u9009\u4E2D\u4E00\u4E2A\u72EC\u7ACB Frame\u3001\u4E3B\u7EC4\u4EF6\uFF0C\u6216\u5DF2\u6709\u53D8\u4F53\u96C6");
     }
     const selected = selection[0];
+    if (selected.type === "COMPONENT_SET") {
+      const result = appendStyleVariants(selected, styleMode);
+      figma.currentPage.selection = [selected];
+      figma.viewport.scrollAndZoomIntoView([selected]);
+      return { count: result.count, name: selected.name, convertedFrame: false, appendedStyle: true };
+    }
     const convertedFrame = selected.type === "FRAME";
     const source = selected.type === "FRAME" ? figma.createComponentFromNode(selected) : selected;
     if (((_a = source.parent) == null ? void 0 : _a.type) === "COMPONENT_SET") {
@@ -664,7 +671,7 @@
     const originalX = source.x;
     const originalY = source.y;
     const parentIndex = parent.children.indexOf(source);
-    const definitions = variantDefinitions(mode);
+    const definitions = variantDefinitions(baseMode, styleMode);
     const components = [];
     const clones = [];
     try {
@@ -675,14 +682,14 @@
           clones.push(component);
         }
         component.name = variantComponentName(definitions[index]);
-        positionVariant(component, index, mode, originalX, originalY, source.width, source.height);
+        positionVariant(component, index, definitions.length, originalX, originalY, source.width, source.height);
         components.push(component);
       }
       const componentSet = figma.combineAsVariants(components, parent, parentIndex);
       componentSet.name = originalName;
       figma.currentPage.selection = [componentSet];
       figma.viewport.scrollAndZoomIntoView([componentSet]);
-      return { count: definitions.length, name: componentSet.name, convertedFrame };
+      return { count: definitions.length, name: componentSet.name, convertedFrame, appendedStyle: false };
     } catch (error) {
       source.name = originalName;
       for (const clone of clones) {
@@ -691,7 +698,70 @@
       throw new Error(`\u5236\u4F5C\u53D8\u4F53\u5931\u8D25\uFF1A${errorMessage(error)}`);
     }
   }
-  function variantDefinitions(mode) {
+  function appendStyleVariants(componentSet, styleMode) {
+    const styleValues = variantStyleValues(styleMode);
+    if (!styleValues.length) {
+      throw new Error("\u8BF7\u9009\u62E9\u4E00\u4E2A\u9644\u52A0 Style \u6A21\u5F0F\u540E\uFF0C\u518D\u5BF9\u5DF2\u6709\u53D8\u4F53\u96C6\u8FFD\u52A0 Style");
+    }
+    if (componentSetHasStyle(componentSet)) {
+      throw new Error("\u5F53\u524D\u53D8\u4F53\u96C6\u5DF2\u7ECF\u6709 Style \u5C5E\u6027\uFF0C\u8BF7\u5148\u9009\u62E9\u6CA1\u6709 Style \u7684\u53D8\u4F53\u96C6");
+    }
+    const originals = Array.from(componentSet.children).filter((child) => child.type === "COMPONENT");
+    const clones = [];
+    try {
+      for (let baseIndex = 0; baseIndex < originals.length; baseIndex += 1) {
+        const original = originals[baseIndex];
+        const baseDefinition = variantDefinitionFromComponent(original);
+        for (let styleIndex = 0; styleIndex < styleValues.length; styleIndex += 1) {
+          const target = styleIndex === 0 ? original : original.clone();
+          if (styleIndex > 0) {
+            componentSet.appendChild(target);
+            clones.push(target);
+          }
+          target.name = variantComponentName(__spreadProps(__spreadValues({}, baseDefinition), { Style: styleValues[styleIndex] }));
+          try {
+            target.x = original.x + styleIndex * (original.width + 20);
+            target.y = original.y;
+          } catch (e) {
+          }
+        }
+      }
+      return { count: originals.length * styleValues.length };
+    } catch (error) {
+      for (const clone of clones) {
+        if (!clone.removed) clone.remove();
+      }
+      throw new Error(`\u8FFD\u52A0 Style \u53D8\u4F53\u5931\u8D25\uFF1A${errorMessage(error)}`);
+    }
+  }
+  function componentSetHasStyle(componentSet) {
+    if (Object.prototype.hasOwnProperty.call(componentSet.componentPropertyDefinitions, "Style")) return true;
+    return componentSet.children.some((child) => child.type === "COMPONENT" && Boolean(variantDefinitionFromComponent(child).Style));
+  }
+  function variantDefinitionFromComponent(component) {
+    const properties = component.variantProperties;
+    if (properties) return __spreadValues({}, properties);
+    return parseVariantName(component.name);
+  }
+  function parseVariantName(name) {
+    const definition = {};
+    for (const part of name.split(",")) {
+      const pieces = part.split("=");
+      if (pieces.length < 2) continue;
+      const key = pieces[0].trim();
+      const value = pieces.slice(1).join("=").trim();
+      if (key === "State" || key === "Checked" || key === "Style") definition[key] = value;
+    }
+    return definition;
+  }
+  function variantDefinitions(mode, styleMode) {
+    const baseDefinitions = baseVariantDefinitions(mode);
+    const styleValues = variantStyleValues(styleMode);
+    if (!styleValues.length) return baseDefinitions;
+    return baseDefinitions.flatMap((definition) => styleValues.map((style) => __spreadProps(__spreadValues({}, definition), { Style: style })));
+  }
+  function baseVariantDefinitions(mode) {
+    if (mode === "style-only") return [{}];
     if (mode === "six" || mode === "eight") {
       return [
         { State: "Normal", Checked: "Unchecked" },
@@ -711,19 +781,21 @@
       ...mode === "four" ? [{ State: "Disabled" }] : []
     ];
   }
-  function variantComponentName(definition) {
-    return definition.Checked ? `State=${definition.State}, Checked=${definition.Checked}` : `State=${definition.State}`;
+  function variantStyleValues(styleMode) {
+    if (styleMode === "complete") return ["Normal", "Complete"];
+    if (styleMode === "rank") return ["1st", "2nd", "3rd"];
+    return [];
   }
-  function positionVariant(component, index, mode, x, y, width, height) {
+  function variantComponentName(definition) {
+    const orderedKeys = ["State", "Checked", "Style"];
+    const parts = orderedKeys.filter((key) => definition[key]).map((key) => `${key}=${definition[key]}`);
+    return parts.join(", ") || "Style=Normal";
+  }
+  function positionVariant(component, index, total, x, y, width, height) {
     try {
-      if (mode === "six" || mode === "eight") {
-        const columns = mode === "eight" ? 4 : 3;
-        component.x = x + index % columns * (width + 20);
-        component.y = y + Math.floor(index / columns) * (height + 40);
-      } else {
-        component.x = x;
-        component.y = y + index * (height + 20);
-      }
+      const columns = total === 8 ? 4 : total === 6 ? 3 : total <= 4 ? 1 : Math.ceil(Math.sqrt(total));
+      component.x = x + index % columns * (width + 20);
+      component.y = y + Math.floor(index / columns) * (height + 40);
     } catch (e) {
     }
   }

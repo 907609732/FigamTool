@@ -197,54 +197,36 @@ Figma工程名_画板中文名翻译英文_平台后缀
 
 ### 一键变体
 
-用于把选中的组件或 Frame 快速制作成组件变体。
+用于把选中的组件、Frame 或已有变体集快速制作成组合变体。
 
-如果选中的是 Frame，会先自动执行 Create component，再制作变体。
+如果选中的是 Frame，会先自动执行 Create component，再制作变体。  
+如果选中的是已有 Component Set，会只在现有 `State` / `Checked` 基础上追加 `Style`，不重建已有状态。
 
-功能页直接展示 4 个按钮，点击对应按钮即可执行，不需要先选下拉框再点确认。
+功能页分成两步选择：
 
-### 3 个变体
+- `基础状态`：`仅 Style`、`跳转按钮 3状态`、`跳转按钮带禁用态 4状态`、`选择按钮 6状态`、`选择按钮带禁用态 8状态`
+- `附加 Style`：`不添加 Style`、`常态和完成`、`排名`
 
-适合普通跳转按钮：
+基础状态规则：
 
-- `State=Normal`
-- `State=Hover`
-- `State=Pressed`
+- `跳转按钮 3状态`：`State=Normal / Hover / Pressed`
+- `跳转按钮带禁用态 4状态`：`State=Normal / Hover / Pressed / Disabled`
+- `选择按钮 6状态`：`Checked=Unchecked / Checked` 各 3 个 State
+- `选择按钮带禁用态 8状态`：`Checked=Unchecked / Checked` 各 4 个 State
 
-### 4 个变体
+Style 规则：
 
-适合需要禁用态的普通按钮：
+- `常态和完成`：`Style=Normal / Complete`
+- `排名`：`Style=1st / 2nd / 3rd`
+- `不添加 Style`：保持原来的 3 / 4 / 6 / 8 变体行为
 
-- `State=Normal`
-- `State=Hover`
-- `State=Pressed`
-- `State=Disabled`
+组合示例：
 
-### 6 个变体
+- `仅 Style + 常态和完成`：2 个变体
+- `跳转按钮 3状态 + 常态和完成`：6 个变体
+- `选择按钮 6状态 + 排名`：18 个变体
 
-适合选择按钮：
-
-- `State=Normal, Checked=Unchecked`
-- `State=Hover, Checked=Unchecked`
-- `State=Pressed, Checked=Unchecked`
-- `State=Normal, Checked=Checked`
-- `State=Hover, Checked=Checked`
-- `State=Pressed, Checked=Checked`
-
-### 8 个变体
-
-适合需要禁用态的选择按钮：
-
-- `State=Normal, Checked=Unchecked`
-- `State=Hover, Checked=Unchecked`
-- `State=Pressed, Checked=Unchecked`
-- `State=Disabled, Checked=Unchecked`
-- `State=Normal, Checked=Checked`
-- `State=Hover, Checked=Checked`
-- `State=Pressed, Checked=Checked`
-- `State=Disabled, Checked=Checked`
-
-功能页按钮旁边的 `？` 会展示上述说明。
+如果已有变体集已经包含 `Style` 属性，再次追加 Style 会直接报错，避免生成重复属性。
 
 ## 模板页
 

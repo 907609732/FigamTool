@@ -74,6 +74,9 @@
       .variant-buttons strong, .variant-buttons small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .variant-buttons strong { font-size: 13px; }
       .variant-buttons small { color: rgba(255, 255, 255, .86); font-size: 10px; }
+      .variant-buttons button:not(.active) small { color: var(--figma-color-text-secondary, #777); }
+      .variant-buttons button.active { border-color: var(--figma-color-border-brand, #0d99ff); background: var(--figma-color-bg-brand, #0d99ff); color: var(--figma-color-text-onbrand, #fff); }
+      .variant-summary { color: var(--figma-color-text-secondary, #777); font-size: 11px; }
       .template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .template-toolbar { display: flex; justify-content: flex-end; gap: 6px; }
       .template-toolbar button { width: auto; min-width: 72px; }
@@ -254,14 +257,24 @@
           <div class="variant-action">
             <div class="panel-title-row">
               <h2>一键按钮变体</h2>
-              <button id="variantHelpBtn" class="help-btn" title="查看四种变体模式的功能明细">？</button>
+              <button id="variantHelpBtn" class="help-btn" title="查看组合变体模式的功能明细">？</button>
             </div>
+            <h3>基础状态</h3>
             <div class="variant-buttons">
-              <button class="primary" data-variant-mode="three" title="跳转按钮：生成 3 个变体，State=Normal、Hover、Pressed"><strong>跳转按钮 · 3 个变体</strong><small>Normal / Hover / Pressed</small></button>
-              <button class="primary" data-variant-mode="four" title="跳转按钮带禁用态：生成 4 个变体，State=Normal、Hover、Pressed、Disabled"><strong>跳转按钮带禁用态 · 4 个变体</strong><small>Normal / Hover / Pressed / Disabled</small></button>
-              <button class="primary" data-variant-mode="six" title="选择按钮：生成 6 个变体，Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>选择按钮 · 6 个变体</strong><small>Unchecked + Checked，各 3 状态</small></button>
-              <button class="primary" data-variant-mode="eight" title="选择按钮带禁用态：生成 8 个变体，Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>选择按钮带禁用态 · 8 个变体</strong><small>Unchecked + Checked，各 4 状态</small></button>
+              <button data-variant-base="style-only" title="仅生成 Style 属性，不添加 State 或 Checked"><strong>仅 Style</strong><small>只生成 Style 维度</small></button>
+              <button data-variant-base="three" title="跳转按钮：State=Normal、Hover、Pressed"><strong>跳转按钮 · 3状态</strong><small>Normal / Hover / Pressed</small></button>
+              <button data-variant-base="four" title="跳转按钮带禁用态：State=Normal、Hover、Pressed、Disabled"><strong>跳转按钮带禁用态 · 4状态</strong><small>Normal / Hover / Pressed / Disabled</small></button>
+              <button data-variant-base="six" title="选择按钮：Unchecked 与 Checked 两组 Normal、Hover、Pressed"><strong>选择按钮 · 6状态</strong><small>Unchecked + Checked，各 3 状态</small></button>
+              <button data-variant-base="eight" title="选择按钮带禁用态：Unchecked 与 Checked 两组 Normal、Hover、Pressed、Disabled"><strong>选择按钮带禁用态 · 8状态</strong><small>Unchecked + Checked，各 4 状态</small></button>
             </div>
+            <h3>附加 Style</h3>
+            <div class="variant-buttons">
+              <button data-variant-style="none" title="不添加 Style，保持原有 State / Checked 模式"><strong>不添加 Style</strong><small>保持原模式</small></button>
+              <button data-variant-style="complete" title="添加 Style=Normal、Style=Complete"><strong>常态和完成</strong><small>Style=Normal / Complete</small></button>
+              <button data-variant-style="rank" title="添加 Style=1st、Style=2nd、Style=3rd"><strong>排名</strong><small>Style=1st / 2nd / 3rd</small></button>
+            </div>
+            <button id="createVariantComboBtn" class="primary">生成变体</button>
+            <small id="variantComboSummary" class="variant-summary">请选择基础状态和附加 Style。</small>
           </div>
         </div>
       </section>
@@ -308,41 +321,26 @@
       <div id="variantHelp" class="modal-overlay" hidden>
         <div class="modal-card">
           <h2>一键变体</h2>
-          <p>先选中一个独立 Frame 或主组件，再直接点击需要的模式按钮。选中 Frame 时，插件会先自动执行 Create component，再克隆组件并执行与 Figma 右上角 Add variant 相同的组合变体操作。</p>
-          <h3>3 个变体：普通跳转按钮</h3>
-          <p>适合点击后跳转到其他页面的普通按钮。</p>
+          <p>先选择“基础状态”和“附加 Style”，再点击生成按钮。选中 Frame 时会先自动 Create component；选中独立 Component 时会新建变体集；选中已有变体集时，只会在现有 State / Checked 基础上追加 Style。</p>
+          <h3>基础状态</h3>
+          <p>仅 Style 不生成 State / Checked；跳转按钮生成 State；选择按钮生成 State + Checked。</p>
           <ul>
-            <li>State=Normal</li>
-            <li>State=Hover</li>
-            <li>State=Pressed</li>
+            <li>跳转按钮：State=Normal / Hover / Pressed</li>
+            <li>跳转按钮带禁用态：State=Normal / Hover / Pressed / Disabled</li>
+            <li>选择按钮：Unchecked 和 Checked 各 3 个 State</li>
+            <li>选择按钮带禁用态：Unchecked 和 Checked 各 4 个 State</li>
           </ul>
-          <h3>4 个变体：含禁用态按钮</h3>
+          <h3>附加 Style</h3>
           <ul>
-            <li>State=Normal</li>
-            <li>State=Hover</li>
-            <li>State=Pressed</li>
-            <li>State=Disabled</li>
+            <li>常态和完成：Style=Normal / Style=Complete</li>
+            <li>排名：Style=1st / Style=2nd / Style=3rd</li>
+            <li>不添加 Style：保持原 3 / 4 / 6 / 8 变体行为</li>
           </ul>
-          <h3>6 个变体：选择按钮</h3>
-          <p>适合点击后切换到另一种选中状态的按钮。</p>
+          <h3>组合示例</h3>
           <ul>
-            <li>State=Normal, Checked=Unchecked</li>
-            <li>State=Hover, Checked=Unchecked</li>
-            <li>State=Pressed, Checked=Unchecked</li>
-            <li>State=Normal, Checked=Checked</li>
-            <li>State=Hover, Checked=Checked</li>
-            <li>State=Pressed, Checked=Checked</li>
-          </ul>
-          <h3>8 个变体：含禁用态选择按钮</h3>
-          <ul>
-            <li>State=Normal, Checked=Unchecked</li>
-            <li>State=Hover, Checked=Unchecked</li>
-            <li>State=Pressed, Checked=Unchecked</li>
-            <li>State=Disabled, Checked=Unchecked</li>
-            <li>State=Normal, Checked=Checked</li>
-            <li>State=Hover, Checked=Checked</li>
-            <li>State=Pressed, Checked=Checked</li>
-            <li>State=Disabled, Checked=Checked</li>
+            <li>仅 Style + 常态和完成：2 个变体</li>
+            <li>跳转按钮 + 常态和完成：6 个变体</li>
+            <li>选择按钮 + 排名：18 个变体</li>
           </ul>
           <button id="closeVariantHelpBtn">关闭</button>
         </div>
@@ -449,6 +447,8 @@
         SECTION: "SECTION 分区",
         SLICE: "SLICE 切片"
       };
+      var activeVariantBaseMode = "three";
+      var activeVariantStyleMode = "none";
       var defaultValues = { opacity: 1, visible: true, locked: false, blendMode: "NORMAL", positionX: 0, positionY: 0, fontFamily: "Inter", fontStyle: "Regular", fontSize: 28, lineHeightPx: 42, lineHeightPercent: 150, letterSpacing: 0, textAlignHorizontal: "CENTER", textAlignVertical: "CENTER", paragraphSpacing: 0, textFill: "#FFFFFF", imageScaleMode: "FILL", cornerRadius: 0, constraintsHorizontal: "MIN", constraintsVertical: "MIN", clipsContent: false, layoutMode: "NONE", padding: 0, itemSpacing: 0 };
       var config = null;
       var selection = { count: 0, roots: [] };
@@ -992,10 +992,36 @@
         status("正在给画板内文本挂文本属性和程序控制属性...");
         post({ type: "ADD_TEXT_CONTROL_PROPERTIES" });
       }
-      function createVariants(mode) {
-        var count = { three: 3, four: 4, six: 6, eight: 8 }[mode] || 3;
+      function variantBaseCount(mode) {
+        return { "style-only": 1, three: 3, four: 4, six: 6, eight: 8 }[mode] || 3;
+      }
+      function variantStyleCount(mode) {
+        return { none: 1, complete: 2, rank: 3 }[mode] || 1;
+      }
+      function variantStyleLabel(mode) {
+        return { none: "不添加 Style", complete: "Style 2", rank: "Style 3" }[mode] || "不添加 Style";
+      }
+      function updateVariantComboUi() {
+        document.querySelectorAll("[data-variant-base]").forEach(function(btn) { btn.classList.toggle("active", btn.dataset.variantBase === activeVariantBaseMode); });
+        document.querySelectorAll("[data-variant-style]").forEach(function(btn) { btn.classList.toggle("active", btn.dataset.variantStyle === activeVariantStyleMode); });
+        var baseCount = variantBaseCount(activeVariantBaseMode);
+        var styleCount = variantStyleCount(activeVariantStyleMode);
+        var count = baseCount * styleCount;
+        var baseLabel = activeVariantBaseMode === "style-only" ? "仅 Style" : "基础 " + baseCount;
+        var summary = activeVariantStyleMode === "none"
+          ? "将生成 " + count + " 个变体：" + baseLabel
+          : "将生成 " + count + " 个变体：" + baseLabel + " × " + variantStyleLabel(activeVariantStyleMode);
+        document.getElementById("createVariantComboBtn").textContent = "生成 " + count + " 个变体";
+        document.getElementById("variantComboSummary").textContent = summary;
+      }
+      function createVariants() {
+        if (activeVariantBaseMode === "style-only" && activeVariantStyleMode === "none") {
+          status("仅 Style 模式需要选择“常态和完成”或“排名”");
+          return;
+        }
+        var count = variantBaseCount(activeVariantBaseMode) * variantStyleCount(activeVariantStyleMode);
         status("正在制作 " + count + " 个变体...");
-        post({ type: "CREATE_VARIANTS", mode: mode });
+        post({ type: "CREATE_VARIANTS", baseMode: activeVariantBaseMode, styleMode: activeVariantStyleMode });
       }
       function insertTemplate(templateId) {
         var template = config.templates.find(function(entry) { return entry.id === templateId; });
@@ -1161,7 +1187,10 @@
       document.getElementById("lexiconSettingsBtn").onclick = showLexiconSettingsModal;
       document.getElementById("templateSettingsBtn").onclick = function() { showTemplateSettings(true); };
       document.getElementById("backToTemplatesBtn").onclick = function() { showTemplateSettings(false); };
-      document.querySelectorAll("[data-variant-mode]").forEach(function(btn) { btn.onclick = function() { createVariants(btn.dataset.variantMode); }; });
+      document.querySelectorAll("[data-variant-base]").forEach(function(btn) { btn.onclick = function() { activeVariantBaseMode = btn.dataset.variantBase; updateVariantComboUi(); }; });
+      document.querySelectorAll("[data-variant-style]").forEach(function(btn) { btn.onclick = function() { activeVariantStyleMode = btn.dataset.variantStyle; updateVariantComboUi(); }; });
+      document.getElementById("createVariantComboBtn").onclick = createVariants;
+      updateVariantComboUi();
       document.getElementById("variantHelpBtn").onclick = function() { showVariantHelp(true); };
       document.getElementById("closeVariantHelpBtn").onclick = function() { showVariantHelp(false); };
       document.getElementById("variantHelp").onclick = function(event) { if (event.target.id === "variantHelp") showVariantHelp(false); };
