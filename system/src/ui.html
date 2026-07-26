@@ -37,13 +37,31 @@
       .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; color: var(--figma-color-text-secondary, #666); font-size: 11px; }
       .meta span, .meta a { white-space: nowrap; }
       .grid { display: grid; gap: 8px; }
-      .workbench { display: grid; grid-template-columns: minmax(240px, 42%) minmax(0, 58%); gap: 8px; align-items: start; }
-      .sticky-tools { position: sticky; top: 0; z-index: 1; display: grid; gap: 8px; background: var(--figma-color-bg, #fff); }
+      .naming-flow { display: grid; gap: 8px; }
+      .workbench { display: grid; grid-template-columns: minmax(300px, 60%) minmax(250px, 40%); gap: 8px; align-items: start; }
+      .naming-column { display: grid; gap: 8px; min-width: 0; }
       .lexicon-main { display: grid; gap: 8px; }
-      .lexicon-topbar { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; }
-      .selection-panel-compact { margin: 0; padding: 8px; }
+      .naming-selection-step { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; align-items: center; margin: 0; }
+      .step-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .step-heading h2 { margin: 0; font-size: 13px; text-transform: none; }
+      .step-heading small { font-weight: 400; }
+      .step-number { display: grid; flex: 0 0 22px; width: 22px; height: 22px; place-items: center; border-radius: 50%; background: var(--figma-color-bg-brand, #0d99ff); color: var(--figma-color-text-onbrand, #fff); font-size: 11px; font-weight: 700; }
+      .selection-panel-compact { margin: 0; padding: 0; border: 0; }
       .selection-panel-compact .selection-item { margin-bottom: 4px; }
       .selection-panel-compact .selection-item:last-child { margin-bottom: 0; }
+      .naming-step { margin: 0; }
+      .naming-step .panel-title-row { margin-bottom: 8px; }
+      .dictionary-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+      .dictionary-header small { overflow: hidden; color: var(--figma-color-text-secondary, #666); text-overflow: ellipsis; white-space: nowrap; }
+      .term-search { display: grid; grid-template-columns: minmax(0, 1fr) 38px; gap: 6px; margin-bottom: 8px; }
+      .term-search input { min-width: 0; }
+      .term-list-scroll { min-height: 190px; height: calc(100vh - 382px); max-height: 620px; overflow: auto; padding-right: 2px; }
+      .term-manage { margin-top: 8px; }
+      .term-manage .fold-summary { padding: 8px; font-size: 11px; }
+      .term-manage .fold-body { gap: 10px; padding: 0 8px 8px; }
+      .term-manage-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+      .term-manage-checks { display: flex; flex-wrap: wrap; gap: 12px; }
+      .term-manage-checks .check { min-height: 24px; }
       .two { grid-template-columns: 1fr 1fr; }
       .three { grid-template-columns: repeat(3, 1fr); }
       .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
@@ -141,7 +159,12 @@
       #selectionText { flex: 0 1 auto; text-align: right; }
       .resize-grip { position: fixed; right: 0; bottom: 0; width: 24px; height: 24px; cursor: nwse-resize; opacity: .7; }
       .resize-grip::before { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid var(--figma-color-text-secondary, #777); border-bottom: 2px solid var(--figma-color-text-secondary, #777); }
-      @media (max-width: 360px) { .workbench { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
+      @media (max-width: 620px) {
+        .workbench { grid-template-columns: 1fr; }
+        .naming-selection-step { grid-template-columns: 1fr; }
+        .term-list-scroll { height: auto; max-height: 360px; }
+      }
+      @media (max-width: 360px) { .two { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -160,58 +183,76 @@
       </nav>
 
       <section id="lexicon" class="active">
-        <div class="workbench">
-          <div class="sticky-tools">
-            <fieldset>
-              <div class="panel-title-row">
-                <h2>范围</h2>
-                <button class="help-btn" data-setting-help="范围" data-setting-description="这里决定命名会作用到哪里。仅选中节点只处理当前选择；直接子级只处理下一层；全部子节点会递归处理整个容器。Locked 和 Hidden 勾上后会跳过锁定或隐藏节点。" title="查看范围说明">？</button>
-              </div>
-              <div class="grid">
-                <label><select id="scope"><option value="selection">仅选中节点</option><option value="children">直接子级</option><option value="deep">全部子节点</option></select></label>
-                <div class="two grid">
-                  <label class="check"><input id="skipLocked" type="checkbox" checked>Locked</label>
-                  <label class="check"><input id="skipHidden" type="checkbox" checked>Hidden</label>
-                </div>
-              </div>
-            </fieldset>
-            <div class="panel-title-row">
-              <h2>词条操作</h2>
-              <button class="help-btn" data-setting-help="词条操作" data-setting-description="新增用于新建一个命名词条；复制会基于当前词条快速做一个副本；删除会移除当前词条并二次确认；右侧齿轮会打开词库与属性方案的完整设置页面。" title="查看词条操作说明">？</button>
+        <div class="naming-flow">
+          <div class="panel naming-selection-step">
+            <div class="step-heading">
+              <span class="step-number">1</span>
+              <h2>当前选择</h2>
             </div>
-            <div class="compact-actions four">
-              <button id="addTermBtn" class="icon-btn" title="新增词条">新增</button>
-              <button id="duplicateTermBtn" class="icon-btn" title="复制词条">复制</button>
-              <button id="deleteTermBtn" class="icon-btn danger" title="删除词条">删除</button>
-              <button id="lexiconSettingsBtn" class="icon-btn icon-only-btn" title="打开词库与属性方案设置" aria-label="词库设置">⚙</button>
-            </div>
-            <div id="termList" class="term-list"></div>
+            <div id="selectionPanel" class="selection-panel-compact"></div>
           </div>
-          <div class="lexicon-main">
-            <div class="lexicon-topbar">
-              <div id="selectionPanel" class="panel selection-panel-compact"></div>
-              <div class="panel">
-                <div class="inline-action">
-                  <div class="panel-title-row">
-                    <h2>中文翻译命名</h2>
-                    <button class="help-btn" data-setting-help="中文翻译命名" data-setting-description="输入中文后可以直接翻译成英文节点名。翻译命名只改名字；翻译并挂属性会在改名后继续给文本挂程序控制和文本属性。勾选自动带入后，选中单个节点时会把节点名或文本内容自动放进输入框。" title="查看中文翻译命名说明">？</button>
+          <div class="workbench">
+            <div class="naming-column">
+              <div class="panel naming-step">
+                <div class="panel-title-row">
+                  <div class="step-heading">
+                    <span class="step-number">2</span>
+                    <h2>选择命名</h2>
                   </div>
-                  <div class="translate-actions">
-                    <label>输入内容<input id="translateText" placeholder="输入中文，点按钮翻译成英文节点名"></label>
-                    <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
-                    <button id="translateAndTagBtn" title="翻译命名后，继续给当前选中内容里的文本挂文本属性和程序控制属性">翻译并挂属性</button>
-                  </div>
-                  <label class="check"><input id="autoFillTranslateText" type="checkbox">选中节点时自动带入输入框</label>
+                  <button class="help-btn" data-setting-help="选择命名" data-setting-description="可以直接点下方推荐词条完成规范命名，也可以先用中文翻译生成英文节点名。翻译并挂属性会在改名后继续给文本挂程序控制和文本属性。" title="查看选择命名说明">？</button>
                 </div>
+                <div class="translate-actions">
+                  <label>中文翻译<input id="translateText" placeholder="输入中文，翻译成英文节点名"></label>
+                  <button id="translateBtn" title="使用百度翻译并填入选中节点名">翻译命名</button>
+                  <button id="translateAndTagBtn" title="翻译命名后，继续给当前选中内容里的文本挂文本属性和程序控制属性">翻译并挂属性</button>
+                </div>
+                <label class="check"><input id="autoFillTranslateText" type="checkbox">选中节点时自动带入</label>
+              </div>
+              <div class="panel naming-step">
+                <div class="dictionary-header">
+                  <div>
+                    <h3>推荐词条</h3>
+                    <small id="detectedKindText">根据当前节点类型筛选</small>
+                  </div>
+                  <small id="termCountText"></small>
+                </div>
+                <div class="term-search">
+                  <input id="termSearchInput" type="search" placeholder="搜索词条或中文说明">
+                  <button id="lexiconSettingsBtn" class="icon-btn icon-only-btn" title="打开词库与属性方案设置" aria-label="词库设置">⚙</button>
+                </div>
+                <div class="term-list-scroll">
+                  <div id="termList" class="term-list"></div>
+                </div>
+                <details class="fold-panel term-manage">
+                  <summary class="fold-summary">作用范围与词库管理</summary>
+                  <div class="fold-body">
+                    <div class="panel-title-row">
+                      <h3>作用范围</h3>
+                      <button class="help-btn" data-setting-help="范围" data-setting-description="仅选中节点只处理当前选择；直接子级只处理下一层；全部子节点会递归处理整个容器。勾选 Locked 或 Hidden 后会跳过锁定或隐藏节点。" title="查看范围说明">？</button>
+                    </div>
+                    <div class="term-manage-grid">
+                      <label>命名范围<select id="scope"><option value="selection">仅选中节点</option><option value="children">直接子级</option><option value="deep">全部子节点</option></select></label>
+                      <div class="term-manage-checks">
+                        <label class="check"><input id="skipLocked" type="checkbox" checked>跳过锁定</label>
+                        <label class="check"><input id="skipHidden" type="checkbox" checked>跳过隐藏</label>
+                      </div>
+                    </div>
+                    <div class="panel-title-row">
+                      <h3>维护词条</h3>
+                      <button class="help-btn" data-setting-help="词条操作" data-setting-description="新增用于新建一个命名词条；复制会基于当前词条做副本；删除会移除当前词条并二次确认。完整导入导出在词条搜索框右侧的齿轮里。" title="查看词条操作说明">？</button>
+                    </div>
+                    <div class="compact-actions">
+                      <button id="addTermBtn" title="新增词条">新增</button>
+                      <button id="duplicateTermBtn" title="复制词条">复制</button>
+                      <button id="deleteTermBtn" class="danger" title="删除词条">删除</button>
+                    </div>
+                  </div>
+                </details>
               </div>
             </div>
-            <fieldset>
-              <div class="panel-title-row">
-                <h2>命名</h2>
-                <button class="help-btn" data-setting-help="命名与方案" data-setting-description="左边点词条会直接给当前节点改名。右边可以切换当前共享属性方案；如果开启“点击任意词条时同步套用当前方案”，改名时会顺手把属性也一起套上。" title="查看命名与方案说明">？</button>
-              </div>
+            <div class="lexicon-main">
               <div id="termEditor" class="grid"></div>
-            </fieldset>
+            </div>
           </div>
         </div>
       </section>
@@ -460,6 +501,7 @@
       var config = null;
       var selection = { count: 0, roots: [] };
       var activeTermId = "";
+      var termSearchQuery = "";
       var localTestConfig = __LOCAL_TEST_CONFIG__;
       var encryptedTranslatePreset = {
         algorithm: "XOR-FNV1A",
@@ -631,12 +673,20 @@
       }
       function renderTerms() {
         normalizeConfig();
-        var terms = visibleTerms();
+        var availableTerms = visibleTerms();
+        var query = termSearchQuery.trim().toLowerCase();
+        var terms = query ? availableTerms.filter(function(entry) {
+          return [entry.word, entry.label, entry.description, kindLabel(entry.kind)].join(" ").toLowerCase().indexOf(query) >= 0;
+        }) : availableTerms;
         if (terms.length && !terms.some(function(entry) { return entry.id === activeTermId; })) activeTermId = terms[0].id;
-        if (!terms.length && config.lexicon.length) activeTermId = config.lexicon[0].id;
+        if (!activeTermId && config.lexicon.length) activeTermId = config.lexicon[0].id;
+        var detectedKind = document.getElementById("detectedKindText");
+        var termCount = document.getElementById("termCountText");
+        if (detectedKind) detectedKind.textContent = selectedKind() ? "当前类型：" + kindLabel(selectedKind()) : "未限定类型，显示全部词条";
+        if (termCount) termCount.textContent = terms.length + " 个";
         document.getElementById("termList").innerHTML = terms.length ? terms.map(function(entry) {
           return '<button class="term-card ' + (entry.id === activeTermId ? "active" : "") + '" data-apply-term="' + entry.id + '"><strong>' + esc(entry.word) + '</strong><small class="term-meta">' + esc(entry.label) + ' · ' + esc(kindLabel(entry.kind)) + '</small><span class="term-mode">' + esc(config.applyPropertiesOnRename ? "改名+方案" : "仅改名") + '</span></button>';
-        }).join("") : '<div class="empty">当前选中节点类型没有可用词条，请新增一个 ' + esc(kindLabel(selectedKind())) + ' 词条。</div>';
+        }).join("") : '<div class="empty">' + (query ? "没有找到匹配词条，请换一个关键词。" : "当前节点类型没有可用词条，可在下方管理区新增。") + '</div>';
         document.querySelectorAll("[data-apply-term]").forEach(function(btn) {
           btn.onclick = function() {
             activeTermId = btn.dataset.applyTerm;
@@ -655,12 +705,12 @@
         document.getElementById("termEditor").innerHTML =
           '<div class="editor-shell">' +
             '<div class="editor-card">' +
-              '<div class="panel-title-row"><h2>命名与方案</h2><div class="title-actions"><span>当前词条：' + esc(entry.word) + '</span><button class="help-btn" data-setting-help="命名与方案" data-setting-description="这里是高频使用区。先在左侧点词条改名，再在这里切换当前属性方案。如果勾上同步套用当前方案，点词条时就会改名并同时应用属性。">？</button></div></div>' +
+              '<div class="panel-title-row"><div class="step-heading"><span class="step-number">3</span><h2>应用方案 <small>可选</small></h2></div><div class="title-actions"><span>当前词条：' + esc(entry.word) + '</span><button class="help-btn" data-setting-help="应用方案" data-setting-description="这里决定点词条后是否顺手应用共享属性方案。关闭同步时只改名；开启同步时会改名并套用当前方案。">？</button></div></div>' +
               '<div class="editor-actions">' +
                 '<div class="section-title"><h3>当前属性方案</h3><span>' + esc(preset.name) + '</span></div>' +
                 '<div class="preset-switcher">' + config.propertyPresets.map(function(item) { return '<button class="' + (item.id === preset.id ? "active" : "") + '" data-preset-id="' + item.id + '">' + esc(item.name) + '</button>'; }).join("") + '</div>' +
-                '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
-                '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击任意词条时同步套用当前方案</label>' +
+                '<label class="check"><input id="applyPropertiesOnRename" type="checkbox" ' + (config.applyPropertiesOnRename ? "checked" : "") + '>点击词条时同步套用当前方案</label>' +
+                '<small>' + (config.applyPropertiesOnRename ? "当前模式：改名并应用方案" : "当前模式：仅改名") + '</small>' +
               '</div>' +
             '</div>' +
             '<div class="quick-strip">' +
@@ -684,6 +734,7 @@
                 '<summary class="fold-summary">编辑当前属性方案</summary>' +
                 '<div class="fold-body">' +
                   '<div class="panel-title-row"><h3>属性方案详细设置</h3><button class="help-btn" data-setting-help="编辑当前属性方案" data-setting-description="这里是完整属性编辑区。你可以配置方案名称、字体、字重、字号、行高、颜色、透明度、对齐、圆角、Position、Constraints 等，并决定这些字段在点词条时是否一起应用。">？</button></div>' +
+                  '<div class="compact-actions"><button id="addPresetBtn">新增方案</button><button id="duplicatePresetBtn">复制方案</button><button id="deletePresetBtn" class="danger">删除方案</button></div>' +
                   '<label>方案名称<input id="presetName" value="' + esc(preset.name) + '"></label>' +
                   '<div class="prop-grid">' +
                     positionProp(v.positionX, v.positionY, enabled.position) +
@@ -707,7 +758,7 @@
           document.getElementById(id).onchange = syncTermEditor;
           document.getElementById(id).oninput = syncTermEditor;
         });
-        document.getElementById("applyPropertiesOnRename").onchange = syncPropertyPreset;
+        document.getElementById("applyPropertiesOnRename").onchange = function() { syncPropertyPreset(); renderTermEditor(); };
         document.getElementById("presetName").onchange = syncPropertyPreset;
         document.getElementById("addPresetBtn").onclick = addPropertyPreset;
         document.getElementById("duplicatePresetBtn").onclick = duplicatePropertyPreset;
@@ -1188,6 +1239,7 @@
 
       document.querySelectorAll(".tab").forEach(function(btn) { btn.onclick = function() { activateTab(btn.dataset.tab); }; });
       document.getElementById("refreshBtn").onclick = function() { post({ type: "SCAN_SELECTION" }); };
+      document.getElementById("termSearchInput").oninput = function(event) { termSearchQuery = event.target.value || ""; renderTerms(); };
       document.getElementById("addTermBtn").onclick = addTerm;
       document.getElementById("duplicateTermBtn").onclick = duplicateTerm;
       document.getElementById("deleteTermBtn").onclick = showDeleteTermConfirm;
